@@ -1,5 +1,7 @@
 package com.playlandpark.playlandmanager.model.dto.movinventario;
 
+import com.playlandpark.playlandmanager.model.dto.summary.BoletaSummary;
+
 import java.time.LocalDate;
 
 public record MovInventarioResponse(

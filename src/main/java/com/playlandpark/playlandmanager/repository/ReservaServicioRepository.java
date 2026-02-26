@@ -23,7 +23,7 @@ public interface ReservaServicioRepository extends JpaRepository<ReservaServicio
     List<ReservaServicio> findByEstado(EstadoReserva estado);
 
     @Query("""
-        select r from RsvServicio r
+        select r from ReservaServicio r
         where r.producto.idProducto = :idProducto
           and r.fechaReserva = :fecha
           and r.estado <> :estadoCancelada

@@ -1,7 +1,5 @@
 package com.playlandpark.playlandmanager.model.dto.empleado;
 
-import com.playlandpark.playlandmanager.model.dto.cargo.CargoResponse;
-
 import java.time.LocalDate;
 
 public record EmpleadoResponse(

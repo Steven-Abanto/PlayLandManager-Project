@@ -1,6 +1,5 @@
 package com.playlandpark.playlandmanager.service.impl;
 
-import com.playlandpark.playlandmanager.model.dto.cargo.CargoResponse;
 import com.playlandpark.playlandmanager.model.dto.empleado.EmpleadoRequest;
 import com.playlandpark.playlandmanager.model.dto.empleado.EmpleadoResponse;
 import com.playlandpark.playlandmanager.model.entity.Cargo;
