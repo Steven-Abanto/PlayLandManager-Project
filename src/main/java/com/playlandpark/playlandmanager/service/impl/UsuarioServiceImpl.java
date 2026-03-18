@@ -13,6 +13,7 @@ import com.playlandpark.playlandmanager.repository.EmpleadoRepository;
 import com.playlandpark.playlandmanager.repository.UsuarioRepository;
 import com.playlandpark.playlandmanager.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,7 @@ public class UsuarioServiceImpl implements UsuarioService {
     private final UsuarioRepository usuarioRepository;
     private final EmpleadoRepository empleadoRepository;
     private final ClienteRepository clienteRepository;
+    private final PasswordEncoder passwordEncoder;
 
     // Crea un nuevo usuario
     @Override
@@ -38,7 +40,9 @@ public class UsuarioServiceImpl implements UsuarioService {
 
         Usuario u = new Usuario();
         u.setUsuario(request.usuario());
-        u.setContrasena(request.contrasena());
+//        u.setContrasena(request.contrasena());
+// Se añade hasheo
+        u.setContrasena(passwordEncoder.encode(request.contrasena()));
         u.setRol(request.rol());
         u.setActivo(request.activo() != null ? request.activo() : true);
 
@@ -116,7 +120,9 @@ public class UsuarioServiceImpl implements UsuarioService {
         }
 
         if (request.contrasena() != null && !request.contrasena().isBlank()) {
-            u.setContrasena(request.contrasena());
+//            u.setContrasena(request.contrasena());
+// Se añade hasheo
+            u.setContrasena(passwordEncoder.encode(request.contrasena()));
         }
 
         if (request.rol() != null) {
