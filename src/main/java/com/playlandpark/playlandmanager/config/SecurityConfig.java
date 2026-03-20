@@ -1,6 +1,6 @@
 package com.playlandpark.playlandmanager.config;
 
-import com.playlandpark.playlandmanager.security.JwtAuthenticationFilter;
+import com.playlandpark.playlandmanager.auth.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
