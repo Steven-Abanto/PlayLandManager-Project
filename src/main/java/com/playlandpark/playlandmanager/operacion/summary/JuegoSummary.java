@@ -1,4 +1,4 @@
-package com.playlandpark.playlandmanager.common.dto.summary;
+package com.playlandpark.playlandmanager.operacion.summary;
 
 import com.playlandpark.playlandmanager.operacion.enums.EstadoJuego;
 

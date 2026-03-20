@@ -2,7 +2,7 @@ package com.playlandpark.playlandmanager.catalogo.service.impl;
 
 import com.playlandpark.playlandmanager.catalogo.dto.promocion.PromocionRequest;
 import com.playlandpark.playlandmanager.catalogo.dto.promocion.PromocionResponse;
-import com.playlandpark.playlandmanager.common.dto.summary.PromocionSummary;
+import com.playlandpark.playlandmanager.catalogo.summary.PromocionSummary;
 import com.playlandpark.playlandmanager.catalogo.entity.Producto;
 import com.playlandpark.playlandmanager.catalogo.entity.Promocion;
 import com.playlandpark.playlandmanager.catalogo.repository.ProductoRepository;

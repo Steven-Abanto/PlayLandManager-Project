@@ -1,6 +1,6 @@
 package com.playlandpark.playlandmanager.ventas.dto.movventa;
 
-import com.playlandpark.playlandmanager.common.dto.summary.CajaSummary;
+import com.playlandpark.playlandmanager.ventas.summary.CajaSummary;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

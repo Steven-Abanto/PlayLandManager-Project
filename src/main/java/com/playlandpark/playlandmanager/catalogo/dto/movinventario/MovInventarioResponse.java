@@ -1,6 +1,6 @@
 package com.playlandpark.playlandmanager.catalogo.dto.movinventario;
 
-import com.playlandpark.playlandmanager.common.dto.summary.BoletaSummary;
+import com.playlandpark.playlandmanager.ventas.summary.BoletaSummary;
 
 import java.time.LocalDate;
 

@@ -1,7 +1,7 @@
 package com.playlandpark.playlandmanager.ventas.dto.carrito;
 
 import com.playlandpark.playlandmanager.personas.dto.carritodetalle.CarritoDetalleResponse;
-import com.playlandpark.playlandmanager.common.dto.summary.UsuarioSummary;
+import com.playlandpark.playlandmanager.auth.summary.UsuarioSummary;
 
 import java.time.LocalDateTime;
 import java.util.List;

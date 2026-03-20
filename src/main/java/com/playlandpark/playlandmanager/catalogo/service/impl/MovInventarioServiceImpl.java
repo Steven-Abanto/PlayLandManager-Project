@@ -3,7 +3,7 @@ package com.playlandpark.playlandmanager.catalogo.service.impl;
 import com.playlandpark.playlandmanager.catalogo.dto.movinventario.MovInventarioProductoResponse;
 import com.playlandpark.playlandmanager.catalogo.dto.movinventario.MovInventarioRequest;
 import com.playlandpark.playlandmanager.catalogo.dto.movinventario.MovInventarioResponse;
-import com.playlandpark.playlandmanager.common.dto.summary.BoletaSummary;
+import com.playlandpark.playlandmanager.ventas.summary.BoletaSummary;
 import com.playlandpark.playlandmanager.ventas.entity.Boleta;
 import com.playlandpark.playlandmanager.catalogo.entity.MovInventario;
 import com.playlandpark.playlandmanager.catalogo.entity.Producto;

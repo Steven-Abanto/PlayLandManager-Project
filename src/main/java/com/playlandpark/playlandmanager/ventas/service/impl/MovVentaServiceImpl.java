@@ -2,7 +2,7 @@ package com.playlandpark.playlandmanager.ventas.service.impl;
 
 import com.playlandpark.playlandmanager.ventas.dto.movventa.MovVentaRequest;
 import com.playlandpark.playlandmanager.ventas.dto.movventa.MovVentaResponse;
-import com.playlandpark.playlandmanager.common.dto.summary.CajaSummary;
+import com.playlandpark.playlandmanager.ventas.summary.CajaSummary;
 import com.playlandpark.playlandmanager.ventas.entity.Caja;
 import com.playlandpark.playlandmanager.ventas.entity.MovVenta;
 import com.playlandpark.playlandmanager.ventas.repository.CajaRepository;

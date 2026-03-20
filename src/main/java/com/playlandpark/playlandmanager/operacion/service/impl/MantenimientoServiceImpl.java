@@ -2,7 +2,7 @@ package com.playlandpark.playlandmanager.operacion.service.impl;
 
 import com.playlandpark.playlandmanager.operacion.dto.mantenimiento.MantenimientoRequest;
 import com.playlandpark.playlandmanager.operacion.dto.mantenimiento.MantenimientoResponse;
-import com.playlandpark.playlandmanager.common.dto.summary.JuegoSummary;
+import com.playlandpark.playlandmanager.operacion.summary.JuegoSummary;
 import com.playlandpark.playlandmanager.personas.entity.Empleado;
 import com.playlandpark.playlandmanager.operacion.entity.Juego;
 import com.playlandpark.playlandmanager.operacion.entity.Mantenimiento;

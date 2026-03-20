@@ -1,6 +1,6 @@
 package com.playlandpark.playlandmanager.personas.dto.carritodetalle;
 
-import com.playlandpark.playlandmanager.common.dto.summary.ProductoSummary;
+import com.playlandpark.playlandmanager.catalogo.summary.ProductoSummary;
 
 import java.math.BigDecimal;
 

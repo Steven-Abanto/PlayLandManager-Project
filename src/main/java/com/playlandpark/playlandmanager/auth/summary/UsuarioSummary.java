@@ -1,4 +1,4 @@
-package com.playlandpark.playlandmanager.common.dto.summary;
+package com.playlandpark.playlandmanager.auth.summary;
 
 import com.playlandpark.playlandmanager.auth.enums.RolesUsuario;
 

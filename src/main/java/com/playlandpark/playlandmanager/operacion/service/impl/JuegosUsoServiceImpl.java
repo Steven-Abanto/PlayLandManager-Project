@@ -2,7 +2,7 @@ package com.playlandpark.playlandmanager.operacion.service.impl;
 
 import com.playlandpark.playlandmanager.operacion.dto.juegosuso.JuegosUsoRequest;
 import com.playlandpark.playlandmanager.operacion.dto.juegosuso.JuegosUsoResponse;
-import com.playlandpark.playlandmanager.common.dto.summary.JuegoSummary;
+import com.playlandpark.playlandmanager.operacion.summary.JuegoSummary;
 import com.playlandpark.playlandmanager.operacion.entity.Juego;
 import com.playlandpark.playlandmanager.operacion.entity.JuegosUso;
 import com.playlandpark.playlandmanager.operacion.repository.JuegoRepository;

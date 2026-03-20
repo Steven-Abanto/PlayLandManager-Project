@@ -2,7 +2,7 @@ package com.playlandpark.playlandmanager.catalogo.service;
 
 import com.playlandpark.playlandmanager.catalogo.dto.promocion.PromocionRequest;
 import com.playlandpark.playlandmanager.catalogo.dto.promocion.PromocionResponse;
-import com.playlandpark.playlandmanager.common.dto.summary.PromocionSummary;
+import com.playlandpark.playlandmanager.catalogo.summary.PromocionSummary;
 
 import java.util.List;
 

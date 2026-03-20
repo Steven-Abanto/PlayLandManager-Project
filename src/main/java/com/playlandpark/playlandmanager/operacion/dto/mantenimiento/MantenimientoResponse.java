@@ -1,6 +1,6 @@
 package com.playlandpark.playlandmanager.operacion.dto.mantenimiento;
 
-import com.playlandpark.playlandmanager.common.dto.summary.JuegoSummary;
+import com.playlandpark.playlandmanager.operacion.summary.JuegoSummary;
 
 import java.time.LocalDate;
 

@@ -1,4 +1,4 @@
-package com.playlandpark.playlandmanager.common.dto.summary;
+package com.playlandpark.playlandmanager.catalogo.summary;
 
 import java.math.BigDecimal;
 

@@ -10,8 +10,8 @@ import com.playlandpark.playlandmanager.ventas.dto.carrito.CarritoDescuentoReque
 import com.playlandpark.playlandmanager.ventas.dto.carrito.CarritoItemRequest;
 import com.playlandpark.playlandmanager.ventas.dto.carrito.CarritoResponse;
 import com.playlandpark.playlandmanager.personas.dto.carritodetalle.CarritoDetalleResponse;
-import com.playlandpark.playlandmanager.common.dto.summary.ProductoSummary;
-import com.playlandpark.playlandmanager.common.dto.summary.UsuarioSummary;
+import com.playlandpark.playlandmanager.catalogo.summary.ProductoSummary;
+import com.playlandpark.playlandmanager.auth.summary.UsuarioSummary;
 import com.playlandpark.playlandmanager.ventas.service.CarritoService;
 import com.playlandpark.playlandmanager.ventas.entity.Carrito;
 import com.playlandpark.playlandmanager.ventas.entity.CarritoDetalle;

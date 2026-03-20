@@ -1,4 +1,4 @@
-package com.playlandpark.playlandmanager.common.dto.summary;
+package com.playlandpark.playlandmanager.ventas.summary;
 
 import com.playlandpark.playlandmanager.ventas.enums.TipoDocuVenta;
 

@@ -2,7 +2,7 @@ package com.playlandpark.playlandmanager.catalogo.controller;
 
 import com.playlandpark.playlandmanager.catalogo.dto.producto.ProductoRequest;
 import com.playlandpark.playlandmanager.catalogo.dto.producto.ProductoResponse;
-import com.playlandpark.playlandmanager.common.dto.summary.ProductoSummary;
+import com.playlandpark.playlandmanager.catalogo.summary.ProductoSummary;
 import com.playlandpark.playlandmanager.catalogo.service.ProductoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

@@ -2,7 +2,7 @@ package com.playlandpark.playlandmanager.personas.service.impl;
 
 import com.playlandpark.playlandmanager.personas.dto.cliente.ClienteRequest;
 import com.playlandpark.playlandmanager.personas.dto.cliente.ClienteResponse;
-import com.playlandpark.playlandmanager.common.dto.summary.ClienteSummary;
+import com.playlandpark.playlandmanager.personas.summary.ClienteSummary;
 import com.playlandpark.playlandmanager.personas.entity.Cliente;
 import com.playlandpark.playlandmanager.personas.repository.ClienteRepository;
 import com.playlandpark.playlandmanager.personas.service.ClienteService;

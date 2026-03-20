@@ -1,4 +1,4 @@
-package com.playlandpark.playlandmanager.common.dto.summary;
+package com.playlandpark.playlandmanager.personas.summary;
 
 public record EmpleadoSummary(
         Integer idEmpleado,

@@ -2,7 +2,7 @@ package com.playlandpark.playlandmanager.personas.service;
 
 import com.playlandpark.playlandmanager.personas.dto.cliente.ClienteRequest;
 import com.playlandpark.playlandmanager.personas.dto.cliente.ClienteResponse;
-import com.playlandpark.playlandmanager.common.dto.summary.ClienteSummary;
+import com.playlandpark.playlandmanager.personas.summary.ClienteSummary;
 
 import java.util.List;
 
