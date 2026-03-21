@@ -1,0 +1,20 @@
+package com.playlandpark.catalogoservice.catalogo.repository;
+
+import com.playlandpark.catalogoservice.catalogo.entity.MovInventario;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.time.LocalDate;
+import java.util.List;
+
+public interface MovInventarioRepository extends JpaRepository<MovInventario, Integer> {
+
+    List<MovInventario> findByIdBoleta(Integer idBoleta);
+
+    List<MovInventario> findByProducto_IdProducto(Integer idProducto);
+
+    List<MovInventario> findByFecha(LocalDate fecha);
+
+    List<MovInventario> findByFechaBetween(LocalDate start, LocalDate end);
+
+    List<MovInventario> findByTipoMovimiento(String tipoMovimiento);
+}
