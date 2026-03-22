@@ -1,0 +1,25 @@
+package com.playlandpark.coreservice.personas.service;
+
+import com.playlandpark.coreservice.personas.dto.empleado.EmpleadoRequest;
+import com.playlandpark.coreservice.personas.dto.empleado.EmpleadoResponse;
+
+import java.util.List;
+
+public interface EmpleadoService {
+
+    EmpleadoResponse create(EmpleadoRequest request);
+
+    EmpleadoResponse findById(Integer idEmpleado);
+
+    EmpleadoResponse findByDocument(String numeDoc);
+
+    List<EmpleadoResponse> findAll(boolean onlyActive);
+
+    List<EmpleadoResponse> findByLocal(Integer local, boolean onlyActive);
+
+    List<EmpleadoResponse> findByCargo(Integer idCargo, boolean onlyActive);
+
+    EmpleadoResponse update(Integer idEmpleado, EmpleadoRequest request);
+
+    void logicDelete(Integer idEmpleado);
+}
