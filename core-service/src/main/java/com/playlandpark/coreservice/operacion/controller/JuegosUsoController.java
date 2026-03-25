@@ -12,7 +12,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/juegos-uso")
+@RequestMapping("/api/core/juegos-uso")
 @RequiredArgsConstructor
 public class JuegosUsoController {
 

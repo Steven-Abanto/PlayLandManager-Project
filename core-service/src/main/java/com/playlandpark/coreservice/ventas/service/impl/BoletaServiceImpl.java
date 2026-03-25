@@ -1,7 +1,7 @@
 package com.playlandpark.coreservice.ventas.service.impl;
 
-import com.playlandpark.coreservice.clients.catalogo.dto.MovInventarioRequest;
-import com.playlandpark.coreservice.clients.catalogo.service.CatalogoClient;
+import com.playlandpark.coreservice.client.catalogo.dto.MovInventarioRequest;
+import com.playlandpark.coreservice.integration.catalogo.CatalogoConsultaService;
 import com.playlandpark.coreservice.personas.entity.Cliente;
 import com.playlandpark.coreservice.personas.entity.Empleado;
 import com.playlandpark.coreservice.personas.repository.ClienteRepository;
@@ -26,7 +26,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -47,13 +46,21 @@ public class BoletaServiceImpl implements BoletaService {
     private final ClienteRepository clienteRepository;
     private final MetPagoRepository metPagoRepository;
     private final MovVentaRepository movVentaRepository;
-    private final CatalogoClient catalogoClient;
+    private final CatalogoConsultaService catalogoConsultaService;
 
     // Crea una boleta desde un request directo (sin carrito)
     @Override
     @Transactional
     public BoletaResponse create(BoletaRequest request) {
         validateRequired(request);
+
+        if (request.detalles() == null || request.detalles().isEmpty()) {
+            throw new IllegalArgumentException("Debe registrar al menos un detalle.");
+        }
+
+        if (request.pagos() == null || request.pagos().isEmpty()) {
+            throw new IllegalArgumentException("Debe registrar al menos un método de pago.");
+        }
 
         Caja caja = cajaRepository.findById(request.idCaja())
                 .orElseThrow(() -> new IllegalArgumentException("Caja no encontrada: " + request.idCaja()));
@@ -65,6 +72,47 @@ public class BoletaServiceImpl implements BoletaService {
         if (request.idCliente() != null) {
             cliente = clienteRepository.findById(request.idCliente())
                     .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado: " + request.idCliente()));
+        }
+
+        // Validar productos contra catálogo antes de emitir
+        for (var d : request.detalles()) {
+            if (d == null) {
+                throw new IllegalArgumentException("Detalle inválido.");
+            }
+            if (d.idProducto() == null) {
+                throw new IllegalArgumentException("El idProducto es obligatorio.");
+            }
+            if (d.cantidad() == null || d.cantidad() <= 0) {
+                throw new IllegalArgumentException("La cantidad debe ser mayor a 0.");
+            }
+            if (d.descuento() == null) {
+                throw new IllegalArgumentException("El descuento es obligatorio.");
+            }
+            if (d.descuento().compareTo(BigDecimal.ZERO) < 0) {
+                throw new IllegalArgumentException("El descuento no puede ser negativo.");
+            }
+
+            var producto = catalogoConsultaService.obtenerProducto(d.idProducto());
+
+            if (Boolean.FALSE.equals(producto.activo())) {
+                throw new IllegalArgumentException("El producto está inactivo: " + producto.idProducto());
+            }
+
+            if (Boolean.FALSE.equals(producto.esServicio())) {
+                if (producto.stockAct() == null || producto.stockAct() < d.cantidad()) {
+                    throw new IllegalArgumentException(
+                            "Stock insuficiente para el producto: "
+                                    + producto.idProducto() + " - " + producto.descripcion()
+                    );
+                }
+            }
+
+            BigDecimal base = producto.precio().multiply(BigDecimal.valueOf(d.cantidad()));
+            if (d.descuento().compareTo(base) > 0) {
+                throw new IllegalArgumentException(
+                        "Descuento mayor que el importe del item para el producto: " + producto.idProducto()
+                );
+            }
         }
 
         Boleta b = new Boleta();
@@ -85,10 +133,87 @@ public class BoletaServiceImpl implements BoletaService {
         b.setImpuesto(totals.impuesto);
         b.setTotal(totals.total);
 
+        BigDecimal totalPagado = BigDecimal.ZERO;
+        for (var p : request.pagos()) {
+            if (p == null) throw new IllegalArgumentException("Pago inválido.");
+            if (p.metodoPago() == null || p.metodoPago().isBlank()) {
+                throw new IllegalArgumentException("El metodoPago es obligatorio.");
+            }
+            if (p.monto() == null || p.monto().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("El monto del pago debe ser mayor que 0.");
+            }
+            totalPagado = totalPagado.add(p.monto());
+        }
+
+        if (totalPagado.compareTo(totals.total) < 0) {
+            throw new IllegalArgumentException("Pago insuficiente. Falta: " + totals.total.subtract(totalPagado));
+        }
+
+        b.setVuelto(totalPagado.subtract(totals.total));
+
         Boleta saved = boletaRepository.save(b);
+
+        // Guardar detalles
+        List<BoletaDetalle> detalles = request.detalles().stream().map(dr -> {
+            var producto = catalogoConsultaService.obtenerProducto(dr.idProducto());
+
+            BoletaDetalle d = new BoletaDetalle();
+            d.setBoleta(saved);
+            d.setIdProducto(producto.idProducto());
+            d.setDescripcionProducto(producto.descripcion());
+            d.setPrecio(producto.precio());
+            d.setCantidad(dr.cantidad());
+            d.setDescuento(dr.descuento());
+
+            BigDecimal base = producto.precio().multiply(BigDecimal.valueOf(dr.cantidad()));
+            d.setSubtotal(base.subtract(dr.descuento()));
+
+            d.setIdPromocion(null);
+            return d;
+        }).toList();
+
+        boletaDetalleRepository.saveAll(detalles);
+
+        // Guardar pagos
+        List<MetPago> pagos = request.pagos().stream().map(pr -> {
+            MetPago mp = new MetPago();
+            mp.setBoleta(saved);
+            mp.setMetodoPago(pr.metodoPago().trim());
+            mp.setMonto(pr.monto());
+            return mp;
+        }).toList();
+
+        metPagoRepository.saveAll(pagos);
+
+        // Registrar movimiento de venta
+        MovVenta mov = new MovVenta();
+        mov.setCaja(caja);
+        mov.setMonto(totals.total);
+        mov.setFecha(saved.getFechaHora().toLocalDate());
+        mov.setTipoMovimiento("VENTA");
+        movVentaRepository.save(mov);
+
+        // Registrar salidas de inventario en catálogo
+        for (BoletaDetalle d : detalles) {
+            catalogoConsultaService.registrarMovimiento(
+                    new MovInventarioRequest(
+                            saved.getIdBoleta(),
+                            d.getIdProducto(),
+                            d.getCantidad(),
+                            saved.getFechaHora().toLocalDate(),
+                            "SALIDA"
+                    )
+            );
+        }
+
+        saved.setDetalles(boletaDetalleRepository.findByBoleta_IdBoleta(saved.getIdBoleta()));
+        saved.setPagos(metPagoRepository.findByBoleta_IdBoleta(saved.getIdBoleta()));
+
         return mapToResponse(saved);
     }
 
+    @Override
+    @Transactional
     public BoletaResponse createFromCarrito(BoletaCarritoRequest request) {
         if (request == null) throw new IllegalArgumentException("La solicitud no puede ser nula.");
         if (request.idCarrito() == null) throw new IllegalArgumentException("El idCarrito es obligatorio.");
@@ -120,10 +245,28 @@ public class BoletaServiceImpl implements BoletaService {
                     .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado: " + request.idCliente()));
         }
 
+        // ------------------ Revalidar productos contra catálogo ------------------
+        for (CarritoDetalle cd : carritoDetalles) {
+            var producto = catalogoConsultaService.obtenerProducto(cd.getIdProducto());
+
+            if (Boolean.FALSE.equals(producto.activo())) {
+                throw new IllegalArgumentException("El producto está inactivo: " + producto.idProducto());
+            }
+
+            if (Boolean.FALSE.equals(producto.esServicio())) {
+                if (producto.stockAct() == null || producto.stockAct() < cd.getCantidad()) {
+                    throw new IllegalArgumentException(
+                            "Stock insuficiente para el producto: "
+                                    + producto.idProducto() + " - " + producto.descripcion()
+                    );
+                }
+            }
+        }
+
         // ------------------ Calcular totales desde carrito ------------------
-        BigDecimal subtotalBruto = BigDecimal.ZERO; // precio*cantidad
-        BigDecimal dsctoTotal = BigDecimal.ZERO;    // descuento MONTO
-        BigDecimal total = BigDecimal.ZERO;         // subtotal ya descontado
+        BigDecimal subtotalBruto = BigDecimal.ZERO;
+        BigDecimal dsctoTotal = BigDecimal.ZERO;
+        BigDecimal total = BigDecimal.ZERO;
 
         for (CarritoDetalle cd : carritoDetalles) {
             if (cd.getCantidad() == null || cd.getCantidad() <= 0) {
@@ -219,6 +362,7 @@ public class BoletaServiceImpl implements BoletaService {
 
         metPagoRepository.saveAll(pagos);
 
+        // ------------------ Registrar movimiento de venta ------------------
         MovVenta mov = new MovVenta();
         mov.setCaja(caja);
         mov.setMonto(total);
@@ -226,13 +370,12 @@ public class BoletaServiceImpl implements BoletaService {
         mov.setTipoMovimiento("VENTA");
         movVentaRepository.save(mov);
 
-// ------------------ Registrar movimientos en catálogo ------------------
+        // ------------------ Registrar movimientos en catálogo ------------------
         for (BoletaDetalle d : boletaDetalles) {
-
-            catalogoClient.registrarMovimiento(
+            catalogoConsultaService.registrarMovimiento(
                     new MovInventarioRequest(
                             savedBoleta.getIdBoleta(),
-                            d.getIdProducto(),   // 👈 importante: ahora debe ser id, no objeto
+                            d.getIdProducto(),
                             d.getCantidad(),
                             savedBoleta.getFechaHora().toLocalDate(),
                             "SALIDA"
@@ -240,7 +383,7 @@ public class BoletaServiceImpl implements BoletaService {
             );
         }
 
-        // ------------------ Cerrar Carrito ------------------
+        // ------------------ Cerrar carrito ------------------
         carrito.setEstado(CARRITO_FACTURADO);
         carritoRepository.save(carrito);
 
@@ -258,17 +401,15 @@ public class BoletaServiceImpl implements BoletaService {
         BoletaDetalle d = new BoletaDetalle();
         d.setBoleta(boleta);
         d.setIdProducto(cd.getIdProducto());
+
+        d.setDescripcionProducto(cd.getDescripcionProducto());
+
         d.setPrecio(cd.getPrecio());
         d.setCantidad(cd.getCantidad());
         d.setDescuento(cd.getDescuento()); // porcentual 0..1
         d.setSubtotal(cd.getSubtotal());   // ya viene: precio*cantidad - precio*cantidad*descuento
 
-        try {
-            var m = cd.getIdPromocion();
-            d.setIdPromocion((m));
-        } catch (Exception ignored) {
-            d.setIdPromocion(null);
-        }
+        d.setIdPromocion(cd.getIdPromocion());
 
         return d;
     }

@@ -8,6 +8,8 @@ import com.playlandpark.coreservice.operacion.enums.EstadoReserva;
 import com.playlandpark.coreservice.personas.repository.ClienteRepository;
 import com.playlandpark.coreservice.operacion.repository.ReservaServicioRepository;
 import com.playlandpark.coreservice.operacion.service.ReservaServicioService;
+import com.playlandpark.coreservice.integration.catalogo.CatalogoConsultaService;
+import com.playlandpark.coreservice.client.catalogo.dto.ProductoData;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +27,7 @@ public class ReservaServicioServiceImpl implements ReservaServicioService {
 
     private final ReservaServicioRepository reservaServicioRepository;
     private final ClienteRepository clienteRepository;
-
+    private final CatalogoConsultaService catalogoConsultaService;
 
     // Crea una nueva reserva de servicio.
     // Valida la request, verifica existencia de producto y cliente, comprueba solapamientos y persiste la reserva.
@@ -33,6 +35,7 @@ public class ReservaServicioServiceImpl implements ReservaServicioService {
     @Transactional
     public ReservaServicioResponse create(ReservaServicioRequest request) {
         validateRequest(request);
+        validarProductoReservable(request.idProducto());
 
         Cliente cliente = clienteRepository.findById(request.idCliente())
                 .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado: " + request.idCliente()));
@@ -131,6 +134,7 @@ public class ReservaServicioServiceImpl implements ReservaServicioService {
     public ReservaServicioResponse update(Integer idReserva, ReservaServicioRequest request) {
         if (idReserva == null) throw new IllegalArgumentException("El idReserva es obligatorio.");
         validateRequest(request);
+        validarProductoReservable(request.idProducto());
 
         ReservaServicio r = reservaServicioRepository.findById(idReserva)
                 .orElseThrow(() -> new IllegalArgumentException("Reserva no encontrada: " + idReserva));
@@ -242,6 +246,20 @@ public class ReservaServicioServiceImpl implements ReservaServicioService {
         return base.isEmpty()
                 ? "CANCELADA: " + motivo
                 : base + " | CANCELADA: " + motivo;
+    }
+
+    private ProductoData validarProductoReservable(Integer idProducto) {
+        ProductoData producto = catalogoConsultaService.obtenerProducto(idProducto);
+
+        if (Boolean.FALSE.equals(producto.activo())) {
+            throw new IllegalArgumentException("El producto está inactivo: " + idProducto);
+        }
+
+        if (Boolean.FALSE.equals(producto.esServicio())) {
+            throw new IllegalArgumentException("El producto no corresponde a un servicio reservable: " + idProducto);
+        }
+
+        return producto;
     }
 
     // Mapea la entidad ReservaServicio a su correspondiente DTO de respuesta.

@@ -1,19 +1,20 @@
 package com.playlandpark.coreservice.ventas.service.impl;
 
-import com.playlandpark.coreservice.clients.auth.service.AuthClient;
-import com.playlandpark.coreservice.clients.auth.dto.UsuarioData;
-import com.playlandpark.coreservice.clients.catalogo.dto.ProductoData;
-import com.playlandpark.coreservice.clients.catalogo.dto.PromocionData;
-import com.playlandpark.coreservice.clients.catalogo.service.CatalogoClient;
+import com.playlandpark.coreservice.client.auth.AuthClient;
+import com.playlandpark.coreservice.client.auth.dto.UsuarioData;
+import com.playlandpark.coreservice.client.catalogo.dto.ProductoData;
+import com.playlandpark.coreservice.client.catalogo.dto.PromocionData;
+import com.playlandpark.coreservice.integration.auth.AuthConsultaService;
+import com.playlandpark.coreservice.integration.catalogo.CatalogoConsultaService;
 import com.playlandpark.coreservice.ventas.dto.carrito.CarritoDescuentoRequest;
 import com.playlandpark.coreservice.ventas.dto.carrito.CarritoItemRequest;
 import com.playlandpark.coreservice.ventas.dto.carrito.CarritoResponse;
 import com.playlandpark.coreservice.ventas.dto.carritodetalle.CarritoDetalleResponse;
-import com.playlandpark.coreservice.ventas.service.CarritoService;
 import com.playlandpark.coreservice.ventas.entity.Carrito;
 import com.playlandpark.coreservice.ventas.entity.CarritoDetalle;
 import com.playlandpark.coreservice.ventas.repository.CarritoDetalleRepository;
 import com.playlandpark.coreservice.ventas.repository.CarritoRepository;
+import com.playlandpark.coreservice.ventas.service.CarritoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,8 +35,8 @@ public class CarritoServiceImpl implements CarritoService {
     private final CarritoRepository carritoRepository;
     private final CarritoDetalleRepository carritoDetalleRepository;
 
-    private final AuthClient authClient;
-    private final CatalogoClient catalogoClient;
+    private final AuthConsultaService authConsultaService;
+    private final CatalogoConsultaService catalogoConsultaService;
 
     // Regla: cada usuario solo puede tener un carrito ABIERTO.
     // Si el usuario ya tiene un carrito ABIERTO, se devuelve ese. Si no, se crea uno nuevo.
@@ -46,7 +47,7 @@ public class CarritoServiceImpl implements CarritoService {
 
         Carrito cart = carritoRepository.findFirstByIdUsuarioAndEstado(idUsuario, ESTADO_ABIERTO)
                 .orElseGet(() -> {
-                    UsuarioData u = authClient.obtenerUsuario(idUsuario);
+                    UsuarioData u = authConsultaService.obtenerUsuario(idUsuario);
                     if (u == null)
                         throw new IllegalArgumentException("Usuario no encontrado: " + idUsuario);
 
@@ -54,8 +55,6 @@ public class CarritoServiceImpl implements CarritoService {
                     c.setIdUsuario(idUsuario);
                     c.setEstado(ESTADO_ABIERTO);
                     c.setFechaCreacion(LocalDateTime.now());
-// Se comenta debido a problemas de sincronización con detalles
-//                    c.setDetalles(new ArrayList<>());
                     return carritoRepository.save(c);
                 });
 
@@ -74,24 +73,20 @@ public class CarritoServiceImpl implements CarritoService {
 
     @Override
     @Transactional
+    public List<CarritoResponse> findAllActiveCart() {
+        List<Carrito> carts = carritoRepository.findByEstado(ESTADO_ABIERTO);
+        return carts.stream().map(this::mapToResponse).toList();
+    }
+
+    @Override
+    @Transactional
     public CarritoResponse addItem(CarritoItemRequest request) {
         validateItemRequest(request);
 
         Carrito cart = getOpenCart(request.idCarrito());
 
-        ProductoData product = catalogoClient.obtenerProducto(request.idProducto());
-        if (product == null)
-            throw new IllegalArgumentException("Producto no encontrado: " + request.idProducto());
-
-        // Regla: si el producto es físico, validar stock.
-        // Si el producto es un servicio, no se valida stock.
-        if (Boolean.FALSE.equals(product.esServicio())) {
-            if (product.stock() == null || product.stock() < request.cantidad()) {
-                throw new IllegalArgumentException(
-                        "Stock insuficiente para el producto: " + product.idProducto() + " - " + product.descripcion()
-                );
-            }
-        }
+        ProductoData product = catalogoConsultaService.obtenerProducto(request.idProducto());
+        validarStockSiAplica(product, request.cantidad());
 
         CarritoDetalle detail = carritoDetalleRepository
                 .findByCarrito_IdCarritoAndIdProducto(cart.getIdCarrito(), product.idProducto())
@@ -102,7 +97,6 @@ public class CarritoServiceImpl implements CarritoService {
             detail.setCarrito(cart);
             detail.setIdProducto(product.idProducto());
             detail.setDescripcionProducto(product.descripcion());
-            // Congelamos precio al momento de agregar
             detail.setPrecio(product.precio());
             detail.setCantidad(request.cantidad());
             detail.setDescuento(BigDecimal.ZERO);
@@ -112,23 +106,16 @@ public class CarritoServiceImpl implements CarritoService {
 
             carritoDetalleRepository.save(detail);
         } else {
-            detail.setCantidad(request.cantidad());
+            int nuevaCantidad = request.cantidad();
+            validarStockSiAplica(product, nuevaCantidad);
 
-            if (Boolean.FALSE.equals(product.esServicio())) {
-                if (product.stock() == null || product.stock() < detail.getCantidad()) {
-                    throw new IllegalArgumentException(
-                            "Stock insuficiente para el producto: " + product.idProducto() + " - " + product.descripcion()
-                    );
-                }
-            }
-
+            detail.setCantidad(nuevaCantidad);
             carritoDetalleRepository.save(detail);
         }
 
         return recalculate(cart.getIdCarrito());
     }
 
-    // Actualiza la cantidad de un producto en el carrito
     @Override
     @Transactional
     public CarritoResponse updateItemQuantity(CarritoItemRequest request) {
@@ -144,16 +131,10 @@ public class CarritoServiceImpl implements CarritoService {
                 .findByCarrito_IdCarritoAndIdProducto(cart.getIdCarrito(), request.idProducto())
                 .orElseThrow(() -> new IllegalArgumentException("El producto no existe en el carrito."));
 
-        ProductoData product = catalogoClient.obtenerProducto(request.idProducto());
-        if (product == null) {
-            throw new IllegalArgumentException("Producto no encontrado: " + request.idProducto());
-        }
+        ProductoData product = catalogoConsultaService.obtenerProducto(request.idProducto());
 
-        if (Boolean.FALSE.equals(product.esServicio())) {
-            if (product.stock() == null || product.stock() < detail.getCantidad()) {
-                throw new IllegalArgumentException("Stock insuficiente para el producto: " + product.idProducto() + " - " + product.descripcion());
-            }
-        }
+        // validar contra la nueva cantidad
+        validarStockSiAplica(product, request.cantidad());
 
         detail.setCantidad(request.cantidad());
         carritoDetalleRepository.save(detail);
@@ -196,9 +177,7 @@ public class CarritoServiceImpl implements CarritoService {
             throw new IllegalArgumentException("El carrito tiene más de 3 días. No se puede aplicar el código.");
         }
 
-        PromocionData promo = catalogoClient.obtenerPromocionPorCodigo(request.codigoPromocion());
-        if (promo == null)
-            throw new IllegalArgumentException("Código de promoción no encontrado: " + request.codigoPromocion());
+        PromocionData promo = catalogoConsultaService.obtenerPromocionPorCodigo(request.codigoPromocion());
 
         validatePromotionVigency(promo);
 
@@ -235,10 +214,15 @@ public class CarritoServiceImpl implements CarritoService {
 
         PromocionData promo = null;
         if (cart.getCodigoPromocion() != null && !cart.getCodigoPromocion().isBlank()) {
-            promo = catalogoClient.obtenerPromocionPorCodigo(cart.getCodigoPromocion());
+            try {
+                promo = catalogoConsultaService.obtenerPromocionPorCodigo(cart.getCodigoPromocion());
 
-            // Si ya no está vigente, se borra
-            if (promo == null || !isPromotionVigent(promo)) {
+                // Si ya no está vigente, se borra
+                if (!isPromotionVigent(promo)) {
+                    clearPromotion(cart);
+                    promo = null;
+                }
+            } catch (Exception e) {
                 clearPromotion(cart);
                 promo = null;
             }
@@ -254,7 +238,7 @@ public class CarritoServiceImpl implements CarritoService {
         }
 
         if (promo != null) {
-            Set<Integer> eligibleProductIds = new HashSet<>(promo.productos());
+            Set<String> eligibleProductNames = new HashSet<>(promo.productos());
 
             BigDecimal remainingMax = promo.montoMax() != null ? promo.montoMax() : BigDecimal.ZERO;
             BigDecimal percent = promo.porcentaje() != null ? promo.porcentaje() : BigDecimal.ZERO;
@@ -262,15 +246,13 @@ public class CarritoServiceImpl implements CarritoService {
             for (CarritoDetalle d : details) {
                 if (remainingMax.compareTo(BigDecimal.ZERO) <= 0) break;
 
-                Integer pid = d.getIdProducto();
-                if (!eligibleProductIds.contains(pid)) continue;
+                String nombreProducto = d.getDescripcionProducto(); // asumir que aquí está el nombre
+                if (!eligibleProductNames.contains(nombreProducto)) continue;
 
                 BigDecimal base = d.getPrecio().multiply(BigDecimal.valueOf(d.getCantidad()));
                 BigDecimal lineDiscount = base.multiply(percent);
 
-                if (lineDiscount.compareTo(remainingMax) > 0) {
-                    lineDiscount = remainingMax;
-                }
+                if (lineDiscount.compareTo(remainingMax) > 0) lineDiscount = remainingMax;
 
                 d.setDescuento(lineDiscount);
                 d.setSubtotal(base.subtract(lineDiscount));
@@ -286,7 +268,18 @@ public class CarritoServiceImpl implements CarritoService {
     }
 
     // ---------------- Helpers ----------------
-    // Valida que el carrito exista y esté en estado ABIERTO
+
+    private void validarStockSiAplica(ProductoData product, Integer cantidadSolicitada) {
+        if (Boolean.FALSE.equals(product.esServicio())) {
+            if (product.stockAct() == null || product.stockAct() < cantidadSolicitada) {
+                throw new IllegalArgumentException(
+                        "Stock insuficiente para el producto: "
+                                + product.idProducto() + " - " + product.descripcion()
+                );
+            }
+        }
+    }
+
     private Carrito getOpenCart(Integer idCarrito) {
         if (idCarrito == null) throw new IllegalArgumentException("El idCarrito es obligatorio.");
 
@@ -341,7 +334,7 @@ public class CarritoServiceImpl implements CarritoService {
 
     // Mapea un Carrito a su DTO de respuesta, incluyendo detalles y resumen de usuario/productos
     private CarritoResponse mapToResponse(Carrito cart) {
-        UsuarioData usuario = authClient.obtenerUsuario(cart.getIdUsuario());
+        UsuarioData usuario = authConsultaService.obtenerUsuario(cart.getIdUsuario());
 
         var details = carritoDetalleRepository.findByCarrito_IdCarrito(cart.getIdCarrito());
 

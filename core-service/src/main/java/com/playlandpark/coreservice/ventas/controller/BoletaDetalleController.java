@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/boleta-detalles")
+@RequestMapping("/api/core/boleta-detalles")
 @RequiredArgsConstructor
 public class BoletaDetalleController {
 

@@ -4,9 +4,13 @@ import com.playlandpark.coreservice.ventas.dto.carrito.CarritoDescuentoRequest;
 import com.playlandpark.coreservice.ventas.dto.carrito.CarritoItemRequest;
 import com.playlandpark.coreservice.ventas.dto.carrito.CarritoResponse;
 
+import java.util.List;
+
 public interface CarritoService {
 
     CarritoResponse getOrCreateActiveCart(Integer idUsuario);
+
+    List<CarritoResponse> findAllActiveCart();
 
     CarritoResponse findById(Integer idCarrito);
 

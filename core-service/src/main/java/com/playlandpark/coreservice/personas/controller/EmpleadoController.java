@@ -22,9 +22,9 @@ public class EmpleadoController {
         return ResponseEntity.status(HttpStatus.CREATED).body(empleadoService.create(request));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<EmpleadoResponse> findById(@PathVariable Integer id) {
-        return ResponseEntity.ok(empleadoService.findById(id));
+    @GetMapping("/{idEmpleado}")
+    public ResponseEntity<EmpleadoResponse> findById(@PathVariable Integer idEmpleado) {
+        return ResponseEntity.ok(empleadoService.findById(idEmpleado));
     }
 
     @GetMapping("/document/{numeDoc}")

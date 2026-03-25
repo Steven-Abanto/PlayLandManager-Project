@@ -25,9 +25,9 @@
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="api-gateway" options="" />
-      <module name="auth-service" options="" />
-      <module name="catalogo-service" options="" />
-      <module name="core-service" options="" />
+      <module name="auth-service" options="-parameters" />
+      <module name="catalogo-service" options="-parameters" />
+      <module name="core-service" options="-parameters" />
       <module name="playlandmanager" options="" />
     </option>
   </component>

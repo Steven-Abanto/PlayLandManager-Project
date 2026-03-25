@@ -9,12 +9,19 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
-@RequestMapping("/api/carrito")
+@RequestMapping("/api/core/carrito")
 @RequiredArgsConstructor
 public class CarritoController {
 
     private final CarritoService carritoService;
+
+    @GetMapping
+    public ResponseEntity<List<CarritoResponse>> findAll() {
+        return ResponseEntity.ok(carritoService.findAllActiveCart());
+    }
 
     @PostMapping("/active/{idUsuario}")
     public ResponseEntity<CarritoResponse> getOrCreateActiveCart(@PathVariable Integer idUsuario) {

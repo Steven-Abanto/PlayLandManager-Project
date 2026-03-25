@@ -1,7 +1,7 @@
 package com.playlandpark.coreservice.ventas.service.impl;
 
-import com.playlandpark.coreservice.clients.catalogo.service.CatalogoClient;
-import com.playlandpark.coreservice.clients.catalogo.dto.ProductoData;
+import com.playlandpark.coreservice.integration.catalogo.CatalogoConsultaService;
+import com.playlandpark.coreservice.client.catalogo.dto.ProductoData;
 import com.playlandpark.coreservice.ventas.dto.boletadetalle.BoletaDetalleRequest;
 import com.playlandpark.coreservice.ventas.dto.boletadetalle.BoletaDetalleResponse;
 import com.playlandpark.coreservice.ventas.entity.Boleta;
@@ -22,7 +22,7 @@ public class BoletaDetalleServiceImpl implements BoletaDetalleService {
 
     private final BoletaDetalleRepository boletaDetalleRepository;
     private final BoletaRepository boletaRepository;
-    private final CatalogoClient catalogoClient;
+    private final CatalogoConsultaService catalogoConsultaService;
 
     @Override
     @Transactional
@@ -32,7 +32,7 @@ public class BoletaDetalleServiceImpl implements BoletaDetalleService {
         Boleta boleta = boletaRepository.findById(idBoleta)
                 .orElseThrow(() -> new IllegalArgumentException("Boleta no encontrada: " + idBoleta));
 
-        ProductoData producto = catalogoClient.obtenerProducto(request.idProducto());
+        ProductoData producto = catalogoConsultaService.obtenerProducto(request.idProducto());
         if (producto == null) {
             throw new IllegalArgumentException("Producto no encontrado: " + request.idProducto());
         }
@@ -115,7 +115,7 @@ public class BoletaDetalleServiceImpl implements BoletaDetalleService {
         BoletaDetalle d = boletaDetalleRepository.findById(idBoletaDetalle)
                 .orElseThrow(() -> new IllegalArgumentException("BoletaDetalle no encontrado: " + idBoletaDetalle));
 
-        ProductoData producto = catalogoClient.obtenerProducto(request.idProducto());
+        ProductoData producto = catalogoConsultaService.obtenerProducto(request.idProducto());
         if (producto == null) {
             throw new IllegalArgumentException("Producto no encontrado: " + request.idProducto());
         }

@@ -1,4 +1,4 @@
-package com.playlandpark.coreservice.clients.auth.dto;
+package com.playlandpark.coreservice.client.auth.dto;
 
 public record UsuarioData(
         Integer idUsuario,

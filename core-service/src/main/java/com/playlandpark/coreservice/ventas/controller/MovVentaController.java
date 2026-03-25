@@ -12,7 +12,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/mov-ventas")
+@RequestMapping("/api/core/mov-ventas")
 @RequiredArgsConstructor
 public class MovVentaController {
 

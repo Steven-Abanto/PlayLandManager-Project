@@ -1,8 +1,8 @@
-package com.playlandpark.coreservice.clients.catalogo.dto;
+package com.playlandpark.coreservice.client.catalogo.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
+import java.util.Set;
 
 public record PromocionData(
         Integer idPromocion,
@@ -12,6 +12,6 @@ public record PromocionData(
         LocalDate fechaInicio,
         LocalDate fechaFin,
         Boolean activo,
-        List<Integer> productos
+        Set<String> productos
 ) {
 }

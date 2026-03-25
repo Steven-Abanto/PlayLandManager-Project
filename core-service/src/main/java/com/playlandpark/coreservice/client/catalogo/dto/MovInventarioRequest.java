@@ -1,4 +1,4 @@
-package com.playlandpark.coreservice.clients.catalogo.dto;
+package com.playlandpark.coreservice.client.catalogo.dto;
 
 import java.time.LocalDate;
 
