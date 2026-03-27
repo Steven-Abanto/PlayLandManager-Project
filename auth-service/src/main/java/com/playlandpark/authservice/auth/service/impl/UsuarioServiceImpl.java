@@ -6,6 +6,7 @@ import com.playlandpark.authservice.auth.entity.Usuario;
 import com.playlandpark.authservice.auth.enums.RolesUsuario;
 import com.playlandpark.authservice.auth.repository.UsuarioRepository;
 import com.playlandpark.authservice.auth.service.UsuarioService;
+import com.playlandpark.authservice.integration.core.CoreConsultaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CoreConsultaService coreConsultaService;
 
     // Crea un nuevo usuario
     @Override
@@ -34,8 +36,6 @@ public class UsuarioServiceImpl implements UsuarioService {
 
         Usuario u = new Usuario();
         u.setUsuario(request.usuario());
-// Se añade hasheo
-//        u.setContrasena(request.contrasena());
         u.setContrasena(passwordEncoder.encode(request.contrasena()));
         u.setRol(request.rol());
         u.setActivo(request.activo() != null ? request.activo() : true);
@@ -166,6 +166,15 @@ public class UsuarioServiceImpl implements UsuarioService {
         }
         if (request.rol() == RolesUsuario.ADMIN && idEmpleado == null) {
             throw new IllegalArgumentException("Para rol ADMIN se requiere idEmpleado.");
+        }
+
+        // Validar existencia en core-service
+        if (idCliente != null) {
+            coreConsultaService.obtenerCliente(idCliente);
+        }
+
+        if (idEmpleado != null) {
+            coreConsultaService.obtenerEmpleado(idEmpleado);
         }
     }
 

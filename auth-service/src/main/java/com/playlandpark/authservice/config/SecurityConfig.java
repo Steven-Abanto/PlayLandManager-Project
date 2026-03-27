@@ -36,6 +36,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/api/auth/me").authenticated()
                         .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/usuarios").permitAll()
 
                         .requestMatchers("/api/core/empleados/**").hasAnyRole("ADMIN", "EMPLEADO")
                         .requestMatchers(HttpMethod.GET, "/api/auth/usuarios/**").hasAnyRole("ADMIN", "EMPLEADO")
