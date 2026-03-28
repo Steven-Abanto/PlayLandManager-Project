@@ -1,0 +1,150 @@
+version: "3.9"
+
+services:
+  mysql-auth:
+    image: mysql:8.4
+    container_name: mysql-auth
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: playland_auth
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_auth_data:/var/lib/mysql
+    networks:
+      - playland-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mysql-catalogo:
+    image: mysql:8.4
+    container_name: mysql-catalogo
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: playland_catalogo
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_catalogo_data:/var/lib/mysql
+    networks:
+      - playland-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mysql-core:
+    image: mysql:8.4
+    container_name: mysql-core
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: playland_core
+    ports:
+      - "3309:3306"
+    volumes:
+      - mysql_core_data:/var/lib/mysql
+    networks:
+      - playland-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  auth-service:
+    build:
+      context: ./auth-service
+    container_name: auth-service
+    depends_on:
+      mysql-auth:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8081
+      CORE_SERVICE_URL: http://core-service:8083
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-auth:3306/playland_auth?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 123456
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      JWT_SECRET: playland-secret-key-super-long-123456789
+      JWT_EXPIRATION: 600000
+      JWT_ISSUER: playlandmanager
+    ports:
+      - "8081:8081"
+    networks:
+      - playland-net
+
+  catalogo-service:
+    build:
+      context: ./catalogo-service
+    container_name: catalogo-service
+    depends_on:
+      mysql-catalogo:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8082
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-catalogo:3306/playland_catalogo?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 123456
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "8082:8082"
+    networks:
+      - playland-net
+
+  core-service:
+    build:
+      context: ./core-service
+    container_name: core-service
+    depends_on:
+      mysql-core:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      catalogo-service:
+        condition: service_started
+    environment:
+      SERVER_PORT: 8083
+      CATALOGO_SERVICE_URL: http://catalogo-service:8082
+      AUTH_SERVICE_URL: http://auth-service:8081
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-core:3306/playland_core?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 123456
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "8083:8083"
+    networks:
+      - playland-net
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    container_name: api-gateway
+    depends_on:
+      auth-service:
+        condition: service_started
+      catalogo-service:
+        condition: service_started
+      core-service:
+        condition: service_started
+    environment:
+      SERVER_PORT: 8080
+      AUTH_SERVICE_URI: http://auth-service:8081
+      CATALOGO_SERVICE_URI: http://catalogo-service:8082
+      CORE_SERVICE_URI: http://core-service:8083
+    ports:
+      - "8080:8080"
+    networks:
+      - playland-net
+
+volumes:
+  mysql_auth_data:
+  mysql_catalogo_data:
+  mysql_core_data:
+
+networks:
+  playland-net:
+    driver: bridge
