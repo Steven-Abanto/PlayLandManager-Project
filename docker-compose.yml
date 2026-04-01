@@ -55,6 +55,46 @@ services:
       timeout: 5s
       retries: 10
 
+  postgres-keycloak:
+    image: postgres:16
+    container_name: postgres-keycloak
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_keycloak_data:/var/lib/postgresql/data
+    networks:
+      - playland-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1
+    container_name: keycloak
+    command: start-dev
+    depends_on:
+      postgres-keycloak:
+        condition: service_healthy
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres-keycloak
+      KC_DB_URL_PORT: 5432
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: 123456
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+    ports:
+      - "9090:8080"
+    networks:
+      - playland-net
+
   auth-service:
     build:
       context: ./auth-service
@@ -130,6 +170,8 @@ services:
         condition: service_started
       core-service:
         condition: service_started
+      keycloak:
+        condition: service_started
     environment:
       SERVER_PORT: 8080
       AUTH_SERVICE_URI: http://auth-service:8081
@@ -144,6 +186,7 @@ volumes:
   mysql_auth_data:
   mysql_catalogo_data:
   mysql_core_data:
+  postgres_keycloak_data:
 
 networks:
   playland-net:

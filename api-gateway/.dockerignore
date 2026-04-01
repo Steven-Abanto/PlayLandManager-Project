@@ -1,0 +1,31 @@
+# Maven
+target/*
+!target/*.jar
+target/*.jar.original
+
+# IDE
+.idea
+*.iml
+.vscode
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Git
+.git
+.gitignore
+
+# Node (si hay frontend)
+node_modules/
+
+# Temp
+tmp/
+temp/
+
+# Docs
+*.md
