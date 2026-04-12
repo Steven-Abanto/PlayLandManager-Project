@@ -1,22 +1,30 @@
 package com.playlandpark.authservice.client.core;
 
-import com.playlandpark.authservice.client.core.dto.ClienteData;
-import com.playlandpark.authservice.client.core.dto.EmpleadoData;
-import com.playlandpark.authservice.config.FeignAuthConfig;
+import com.playlandpark.authservice.integration.core.dto.ClienteCoreRequest;
+import com.playlandpark.authservice.integration.core.dto.ClienteCoreResponse;
+import com.playlandpark.authservice.integration.core.dto.EmpleadoCoreRequest;
+import com.playlandpark.authservice.integration.core.dto.EmpleadoCoreResponse;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.*;
 
 @FeignClient(
         name = "coreClient",
-        url = "${core-service.url}",
-        configuration = FeignAuthConfig.class
+        url = "${core-service.url}"
 )
 public interface CoreClient {
 
+    @PostMapping("/api/core/clientes")
+    ClienteCoreResponse crearCliente(@RequestBody ClienteCoreRequest request);
+
+    @PostMapping("/api/core/empleados")
+    EmpleadoCoreResponse crearEmpleado(
+            @RequestHeader("Authorization") String authorization,
+            @RequestBody EmpleadoCoreRequest request
+    );
+
     @GetMapping("/api/core/clientes/{id}")
-    ClienteData obtenerCliente(@PathVariable("id") Integer idCliente);
+    ClienteCoreResponse obtenerCliente(@PathVariable("id") Integer id);
 
     @GetMapping("/api/core/empleados/{idEmpleado}")
-    EmpleadoData obtenerEmpleado(@PathVariable("idEmpleado") Integer idEmpleado);
+    EmpleadoCoreResponse obtenerEmpleado(@PathVariable("idEmpleado") Integer idEmpleado);
 }

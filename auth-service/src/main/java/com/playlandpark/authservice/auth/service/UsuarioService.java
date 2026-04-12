@@ -1,5 +1,7 @@
 package com.playlandpark.authservice.auth.service;
 
+import com.playlandpark.authservice.auth.dto.registro.ClienteRegistroRequest;
+import com.playlandpark.authservice.auth.dto.registro.EmpleadoRegistroRequest;
 import com.playlandpark.authservice.auth.dto.usuario.UsuarioRequest;
 import com.playlandpark.authservice.auth.dto.usuario.UsuarioResponse;
 
@@ -9,9 +11,9 @@ public interface UsuarioService {
 
     UsuarioResponse create(UsuarioRequest request);
 
-    UsuarioResponse registrarCliente(UsuarioRequest request);
+    UsuarioResponse registrarClienteCompleto(ClienteRegistroRequest request);
 
-    UsuarioResponse registrarEmpleado(UsuarioRequest request);
+    UsuarioResponse registrarEmpleadoCompleto(EmpleadoRegistroRequest request);
 
     UsuarioResponse findById(Integer id);
 

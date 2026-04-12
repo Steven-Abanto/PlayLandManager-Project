@@ -1,6 +1,7 @@
 package com.playlandpark.authservice.auth.controller;
 
-import com.playlandpark.authservice.auth.dto.usuario.UsuarioRequest;
+import com.playlandpark.authservice.auth.dto.registro.ClienteRegistroRequest;
+import com.playlandpark.authservice.auth.dto.registro.EmpleadoRegistroRequest;
 import com.playlandpark.authservice.auth.dto.usuario.UsuarioResponse;
 import com.playlandpark.authservice.auth.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
@@ -16,16 +17,16 @@ public class RegistroController {
     private final UsuarioService usuarioService;
 
     @PostMapping("/cliente")
-    public ResponseEntity<UsuarioResponse> registrarCliente(@RequestBody UsuarioRequest request) {
+    public ResponseEntity<UsuarioResponse> registrarCliente(@RequestBody ClienteRegistroRequest request) {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(usuarioService.registrarCliente(request));
+                .body(usuarioService.registrarClienteCompleto(request));
     }
 
     @PostMapping("/empleado")
-    public ResponseEntity<UsuarioResponse> registrarEmpleado(@RequestBody UsuarioRequest request) {
+    public ResponseEntity<UsuarioResponse> registrarEmpleado(@RequestBody EmpleadoRegistroRequest request) {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(usuarioService.registrarEmpleado(request));
+                .body(usuarioService.registrarEmpleadoCompleto(request));
     }
 }

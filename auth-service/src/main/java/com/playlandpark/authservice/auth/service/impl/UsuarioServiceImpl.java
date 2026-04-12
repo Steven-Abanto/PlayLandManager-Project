@@ -1,5 +1,7 @@
 package com.playlandpark.authservice.auth.service.impl;
 
+import com.playlandpark.authservice.auth.dto.registro.ClienteRegistroRequest;
+import com.playlandpark.authservice.auth.dto.registro.EmpleadoRegistroRequest;
 import com.playlandpark.authservice.auth.dto.usuario.UsuarioRequest;
 import com.playlandpark.authservice.auth.dto.usuario.UsuarioResponse;
 import com.playlandpark.authservice.auth.entity.Usuario;
@@ -7,6 +9,8 @@ import com.playlandpark.authservice.auth.enums.RolesUsuario;
 import com.playlandpark.authservice.auth.repository.UsuarioRepository;
 import com.playlandpark.authservice.auth.service.UsuarioService;
 import com.playlandpark.authservice.integration.core.CoreConsultaService;
+import com.playlandpark.authservice.integration.core.dto.ClienteCoreRequest;
+import com.playlandpark.authservice.integration.core.dto.EmpleadoCoreRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -48,32 +52,68 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     @Override
     @Transactional
-    public UsuarioResponse registrarCliente(UsuarioRequest request) {
-        UsuarioRequest clienteRequest = new UsuarioRequest(
-                request.usuario(),
-                request.contrasena(),
-                RolesUsuario.CLIENTE,
-                null,
-                request.idCliente(),
-                request.activo()
+    public UsuarioResponse registrarClienteCompleto(ClienteRegistroRequest request) {
+        ClienteCoreRequest clienteCoreRequest = new ClienteCoreRequest(
+                request.tipoDoc(),
+                request.numeDoc(),
+                request.nombre(),
+                request.apePaterno(),
+                request.apeMaterno(),
+                request.genero(),
+                request.fechaNac(),
+                request.correo(),
+                request.telefono(),
+                request.direccion(),
+                true
         );
 
-        return create(clienteRequest);
+        var clienteCreado = coreConsultaService.crearCliente(clienteCoreRequest);
+
+        UsuarioRequest usuarioRequest = new UsuarioRequest(
+                request.cuenta().usuario(),
+                request.cuenta().contrasena(),
+                RolesUsuario.CLIENTE,
+                null,
+                clienteCreado.idCliente(),
+                true
+        );
+
+        return create(usuarioRequest);
     }
 
     @Override
     @Transactional
-    public UsuarioResponse registrarEmpleado(UsuarioRequest request) {
-        UsuarioRequest empleadoRequest = new UsuarioRequest(
-                request.usuario(),
-                request.contrasena(),
-                RolesUsuario.EMPLEADO,
-                request.idEmpleado(),
-                null,
-                request.activo()
+    public UsuarioResponse registrarEmpleadoCompleto(EmpleadoRegistroRequest request) {
+        EmpleadoCoreRequest empleadoCoreRequest = new EmpleadoCoreRequest(
+                request.tipoDoc(),
+                request.numeDoc(),
+                request.nombre(),
+                request.apePaterno(),
+                request.apeMaterno(),
+                request.genero(),
+                request.fechaNac(),
+                request.correo(),
+                request.telefono(),
+                request.direccion(),
+                request.local(),
+                request.idCargo(),
+                request.fechaInicio(),
+                request.fechaFin(),
+                true
         );
 
-        return create(empleadoRequest);
+        var empleadoCreado = coreConsultaService.crearEmpleado(empleadoCoreRequest);
+
+        UsuarioRequest usuarioRequest = new UsuarioRequest(
+                request.cuenta().usuario(),
+                request.cuenta().contrasena(),
+                RolesUsuario.EMPLEADO,
+                empleadoCreado.idEmpleado(),
+                null,
+                true
+        );
+
+        return create(usuarioRequest);
     }
 
     // Busca un usuario por su id
