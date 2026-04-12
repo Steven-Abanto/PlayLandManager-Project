@@ -11,6 +11,8 @@ import com.playlandpark.authservice.auth.service.UsuarioService;
 import com.playlandpark.authservice.integration.core.CoreConsultaService;
 import com.playlandpark.authservice.integration.core.dto.ClienteCoreRequest;
 import com.playlandpark.authservice.integration.core.dto.EmpleadoCoreRequest;
+import com.playlandpark.authservice.integration.keycloak.KeycloakAdminService;
+import com.playlandpark.authservice.integration.keycloak.dto.KeycloakUserRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -25,8 +27,8 @@ public class UsuarioServiceImpl implements UsuarioService {
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final CoreConsultaService coreConsultaService;
+    private final KeycloakAdminService keycloakAdminService;
 
-    // Crea un nuevo usuario
     @Override
     @Transactional
     public UsuarioResponse create(UsuarioRequest request) {
@@ -69,16 +71,32 @@ public class UsuarioServiceImpl implements UsuarioService {
 
         var clienteCreado = coreConsultaService.crearCliente(clienteCoreRequest);
 
-        UsuarioRequest usuarioRequest = new UsuarioRequest(
-                request.cuenta().usuario(),
-                request.cuenta().contrasena(),
-                RolesUsuario.CLIENTE,
-                null,
-                clienteCreado.idCliente(),
-                true
-        );
+        String username = request.cuenta().usuario();
 
-        return create(usuarioRequest);
+        try {
+            keycloakAdminService.createUser(new KeycloakUserRequest(
+                    username,
+                    request.cuenta().contrasena(),
+                    request.correo(),
+                    request.nombre(),
+                    buildLastName(request.apePaterno(), request.apeMaterno()),
+                    "CLIENTE"
+            ));
+
+            UsuarioRequest usuarioRequest = new UsuarioRequest(
+                    username,
+                    request.cuenta().contrasena(),
+                    RolesUsuario.CLIENTE,
+                    null,
+                    clienteCreado.idCliente(),
+                    true
+            );
+
+            return create(usuarioRequest);
+        } catch (Exception e) {
+            keycloakAdminService.deleteUserIfExists(username);
+            throw e;
+        }
     }
 
     @Override
@@ -104,19 +122,34 @@ public class UsuarioServiceImpl implements UsuarioService {
 
         var empleadoCreado = coreConsultaService.crearEmpleado(empleadoCoreRequest);
 
-        UsuarioRequest usuarioRequest = new UsuarioRequest(
-                request.cuenta().usuario(),
-                request.cuenta().contrasena(),
-                RolesUsuario.EMPLEADO,
-                empleadoCreado.idEmpleado(),
-                null,
-                true
-        );
+        String username = request.cuenta().usuario();
 
-        return create(usuarioRequest);
+        try {
+            keycloakAdminService.createUser(new KeycloakUserRequest(
+                    username,
+                    request.cuenta().contrasena(),
+                    request.correo(),
+                    request.nombre(),
+                    buildLastName(request.apePaterno(), request.apeMaterno()),
+                    "EMPLEADO"
+            ));
+
+            UsuarioRequest usuarioRequest = new UsuarioRequest(
+                    username,
+                    request.cuenta().contrasena(),
+                    RolesUsuario.EMPLEADO,
+                    empleadoCreado.idEmpleado(),
+                    null,
+                    true
+            );
+
+            return create(usuarioRequest);
+        } catch (Exception e) {
+            keycloakAdminService.deleteUserIfExists(username);
+            throw e;
+        }
     }
 
-    // Busca un usuario por su id
     @Override
     @Transactional(readOnly = true)
     public UsuarioResponse findById(Integer id) {
@@ -125,7 +158,6 @@ public class UsuarioServiceImpl implements UsuarioService {
         return mapToResponse(u);
     }
 
-    // Busca un usuario por su nombre de usuario
     @Override
     @Transactional(readOnly = true)
     public UsuarioResponse findByUsuario(String usuario) {
@@ -134,7 +166,6 @@ public class UsuarioServiceImpl implements UsuarioService {
         return mapToResponse(u);
     }
 
-    // Busca usuarios por rol, con opción de filtrar solo los activos
     @Override
     @Transactional(readOnly = true)
     public List<UsuarioResponse> findByRol(String rol, boolean onlyActive) {
@@ -142,7 +173,6 @@ public class UsuarioServiceImpl implements UsuarioService {
             throw new IllegalArgumentException("Rol no puede ser nulo o vacío.");
         }
 
-        // Validar que el rol exista en el enum
         RolesUsuario rolEnum;
         try {
             rolEnum = RolesUsuario.valueOf(rol.trim().toUpperCase());
@@ -150,14 +180,13 @@ public class UsuarioServiceImpl implements UsuarioService {
             throw new IllegalArgumentException("Rol no válido: " + rol);
         }
 
-        List<Usuario> list =  onlyActive
+        List<Usuario> list = onlyActive
                 ? usuarioRepository.findByRolAndActivoTrue(rolEnum)
                 : usuarioRepository.findByRol(rolEnum);
 
         return list.stream().map(this::mapToResponse).toList();
     }
 
-    // Busca todos los usuarios, con opción de filtrar solo los activos
     @Override
     @Transactional(readOnly = true)
     public List<UsuarioResponse> findAll() {
@@ -166,7 +195,6 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .toList();
     }
 
-    // Actualiza un usuario existente
     @Override
     @Transactional
     public UsuarioResponse update(Integer id, UsuarioRequest request) {
@@ -183,8 +211,6 @@ public class UsuarioServiceImpl implements UsuarioService {
         }
 
         if (request.contrasena() != null && !request.contrasena().isBlank()) {
-// Se añade hasheo
-//            u.setContrasena(request.contrasena());
             u.setContrasena(passwordEncoder.encode(request.contrasena()));
         }
 
@@ -206,7 +232,6 @@ public class UsuarioServiceImpl implements UsuarioService {
         return mapToResponse(usuarioRepository.save(u));
     }
 
-    // Elimina lógicamente un usuario (activo = false)
     @Override
     @Transactional
     public void logicDelete(Integer id) {
@@ -216,18 +241,14 @@ public class UsuarioServiceImpl implements UsuarioService {
         usuarioRepository.save(u);
     }
 
-    // ----------------- helpers -----------------
-    // Valida que la relación entre usuario-empleado-cliente sea coherente con el rol
     private void validarRelacion(UsuarioRequest request) {
         Integer idEmpleado = request.idEmpleado();
         Integer idCliente = request.idCliente();
 
-        // No ambos
         if (idEmpleado != null && idCliente != null) {
             throw new IllegalArgumentException("Solo se permite idEmpleado o idCliente, no ambos.");
         }
 
-        // Según rol
         if (request.rol() == RolesUsuario.CLIENTE && idCliente == null) {
             throw new IllegalArgumentException("Para rol CLIENTE se requiere idCliente.");
         }
@@ -238,7 +259,6 @@ public class UsuarioServiceImpl implements UsuarioService {
             throw new IllegalArgumentException("Para rol ADMIN se requiere idEmpleado.");
         }
 
-        // Validar existencia en core-service
         if (idCliente != null) {
             coreConsultaService.obtenerCliente(idCliente);
         }
@@ -264,51 +284,12 @@ public class UsuarioServiceImpl implements UsuarioService {
         }
     }
 
-// Se comenta porque ya no hay relaciones JPA
-//    // Asigna o actualiza la relación entre usuario-empleado-cliente
-//    private void asignarRelacion(Usuario u, UsuarioRequest request, boolean esCreacion) {
-//        Integer idEmpleado = request.idEmpleado();
-//        Integer idCliente = request.idCliente();
-//
-//        // Si no mandan IDs, y ya existe relación (update), no la toques.
-//        if (!esCreacion && idEmpleado == null && idCliente == null) return;
-//
-//        // Reset relaciones
-//        u.setEmpleado(null);
-//        u.setCliente(null);
-//
-//        if (idEmpleado != null) {
-//            if (usuarioRepository.existsByEmpleado_IdEmpleado(idEmpleado)
-//                    && (esCreacion || !idEmpleado.equals(u.getEmpleado() != null ? u.getEmpleado().getIdEmpleado() : null))) {
-//                throw new IllegalArgumentException("Ese empleado ya tiene un usuario asignado.");
-//            }
-//
-//            Empleado e = empleadoRepository.findById(idEmpleado)
-//                    .orElseThrow(() -> new IllegalArgumentException("Empleado no encontrado: " + idEmpleado));
-//            u.setEmpleado(e);
-//        }
-//
-//        if (idCliente != null) {
-//            if (usuarioRepository.existsByCliente_IdCliente(idCliente)
-//                    && (esCreacion || !idCliente.equals(u.getCliente() != null ? u.getCliente().getIdCliente() : null))) {
-//                throw new IllegalArgumentException("Ese cliente ya tiene un usuario asignado.");
-//            }
-//
-//            Cliente c = clienteRepository.findById(idCliente)
-//                    .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado: " + idCliente));
-//            u.setCliente(c);
-//        }
-//
-//        // Validación extra opcional: coherencia rol-relación
-//        if (u.getRol() == RolesUsuario.CLIENTE && u.getCliente() == null) {
-//            throw new IllegalArgumentException("Rol CLIENTE requiere relación con Cliente.");
-//        }
-//        if (u.getRol() == RolesUsuario.EMPLEADO && u.getEmpleado() == null) {
-//            throw new IllegalArgumentException("Rol EMPLEADO requiere relación con Empleado.");
-//        }
-//    }
+    private String buildLastName(String apePaterno, String apeMaterno) {
+        String paterno = apePaterno != null ? apePaterno.trim() : "";
+        String materno = apeMaterno != null ? apeMaterno.trim() : "";
+        return (paterno + " " + materno).trim();
+    }
 
-    // Mapea un Usuario a UsuarioResponse
     private UsuarioResponse mapToResponse(Usuario u) {
         return new UsuarioResponse(
                 u.getIdUsuario(),
