@@ -26,6 +26,7 @@ public class SecurityConfig {
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/registro/cliente").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/registro/empleado").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/auth/registro/admin").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/auth/usuarios").hasRole("ADMIN")
                         .requestMatchers("/api/auth/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/auth/usuarios/**").hasAnyRole("ADMIN", "EMPLEADO")

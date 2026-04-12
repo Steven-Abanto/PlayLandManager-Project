@@ -16,6 +16,7 @@ public class SecurityConfig {
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .cors(Customizer.withDefaults())
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers(HttpMethod.POST, "/api/auth/registro/cliente").permitAll()
                         .pathMatchers("/actuator/**").permitAll()

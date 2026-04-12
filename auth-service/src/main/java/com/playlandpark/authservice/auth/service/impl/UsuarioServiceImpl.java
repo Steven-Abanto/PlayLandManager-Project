@@ -70,9 +70,9 @@ public class UsuarioServiceImpl implements UsuarioService {
         );
 
         var clienteCreado = coreConsultaService.crearCliente(clienteCoreRequest);
-
         String username = request.cuenta().usuario();
 
+        boolean keycloakCreated = false;
         try {
             keycloakAdminService.createUser(new KeycloakUserRequest(
                     username,
@@ -83,6 +83,7 @@ public class UsuarioServiceImpl implements UsuarioService {
                     "CLIENTE"
             ));
 
+            keycloakCreated = true;
             UsuarioRequest usuarioRequest = new UsuarioRequest(
                     username,
                     request.cuenta().contrasena(),
@@ -91,10 +92,16 @@ public class UsuarioServiceImpl implements UsuarioService {
                     clienteCreado.idCliente(),
                     true
             );
-
             return create(usuarioRequest);
         } catch (Exception e) {
-            keycloakAdminService.deleteUserIfExists(username);
+            if (keycloakCreated) {
+                keycloakAdminService.deleteUserIfExists(username);
+            }
+            try {
+                coreConsultaService.eliminarCliente(clienteCreado.idCliente());
+            } catch (Exception ex) {
+                System.out.println("Error al eliminar cliente creado en core-service tras fallo en creación de usuario: " + ex.getMessage());
+            }
             throw e;
         }
     }
@@ -121,9 +128,9 @@ public class UsuarioServiceImpl implements UsuarioService {
         );
 
         var empleadoCreado = coreConsultaService.crearEmpleado(empleadoCoreRequest);
-
         String username = request.cuenta().usuario();
 
+        boolean keycloakCreated = false;
         try {
             keycloakAdminService.createUser(new KeycloakUserRequest(
                     username,
@@ -134,6 +141,7 @@ public class UsuarioServiceImpl implements UsuarioService {
                     "EMPLEADO"
             ));
 
+            keycloakCreated = true;
             UsuarioRequest usuarioRequest = new UsuarioRequest(
                     username,
                     request.cuenta().contrasena(),
@@ -142,10 +150,74 @@ public class UsuarioServiceImpl implements UsuarioService {
                     null,
                     true
             );
-
             return create(usuarioRequest);
         } catch (Exception e) {
-            keycloakAdminService.deleteUserIfExists(username);
+            if (keycloakCreated) {
+                keycloakAdminService.deleteUserIfExists(username);
+            }
+            try {
+                coreConsultaService.eliminarEmpleado(empleadoCreado.idEmpleado());
+            } catch (Exception ex) {
+                System.out.println("Error al eliminar empleado creado en core-service tras fallo en creación de usuario: " + ex.getMessage());
+            }
+            throw e;
+        }
+    }
+
+    @Override
+    @Transactional
+    public UsuarioResponse registrarAdminCompleto(EmpleadoRegistroRequest request) {
+        EmpleadoCoreRequest empleadoCoreRequest = new EmpleadoCoreRequest(
+                request.tipoDoc(),
+                request.numeDoc(),
+                request.nombre(),
+                request.apePaterno(),
+                request.apeMaterno(),
+                request.genero(),
+                request.fechaNac(),
+                request.correo(),
+                request.telefono(),
+                request.direccion(),
+                request.local(),
+                request.idCargo(),
+                request.fechaInicio(),
+                request.fechaFin(),
+                true
+        );
+
+        var empleadoCreado = coreConsultaService.crearEmpleado(empleadoCoreRequest);
+        String username = request.cuenta().usuario();
+
+        boolean keycloakCreated = false;
+        try {
+            keycloakAdminService.createUser(new KeycloakUserRequest(
+                    username,
+                    request.cuenta().contrasena(),
+                    request.correo(),
+                    request.nombre(),
+                    buildLastName(request.apePaterno(), request.apeMaterno()),
+                    "ADMIN"
+            ));
+
+            keycloakCreated = true;
+            UsuarioRequest usuarioRequest = new UsuarioRequest(
+                    username,
+                    request.cuenta().contrasena(),
+                    RolesUsuario.ADMIN,
+                    empleadoCreado.idEmpleado(),
+                    null,
+                    true
+            );
+            return create(usuarioRequest);
+        } catch (Exception e) {
+            if (keycloakCreated) {
+                keycloakAdminService.deleteUserIfExists(username);
+            }
+            try {
+                coreConsultaService.eliminarEmpleado(empleadoCreado.idEmpleado());
+            } catch (Exception ex) {
+                System.out.println("Error al eliminar empleado creado en core-service tras fallo en creación de usuario: " + ex.getMessage());
+            }
             throw e;
         }
     }

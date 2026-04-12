@@ -3,6 +3,7 @@ package com.playlandpark.coreservice.personas.controller;
 import com.playlandpark.coreservice.personas.dto.empleado.EmpleadoRequest;
 import com.playlandpark.coreservice.personas.dto.empleado.EmpleadoResponse;
 import com.playlandpark.coreservice.personas.service.EmpleadoService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +19,7 @@ public class EmpleadoController {
     private final EmpleadoService empleadoService;
 
     @PostMapping
-    public ResponseEntity<EmpleadoResponse> create(@RequestBody EmpleadoRequest request) {
+    public ResponseEntity<EmpleadoResponse> create(@Valid @RequestBody EmpleadoRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(empleadoService.create(request));
     }
 

@@ -1,47 +1,85 @@
 package com.playlandpark.authservice.config;
 
 import feign.FeignException;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.time.Instant;
 import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<?> handleValidationErrors(
+            MethodArgumentNotValidException ex,
+            HttpServletRequest request
+    ) {
+        String message = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(err -> err.getField() + ": " + err.getDefaultMessage())
+                .findFirst()
+                .orElse("Error de validación");
+
+        return buildResponse(HttpStatus.BAD_REQUEST, message, request.getRequestURI());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<?> handleIllegalArgument(IllegalArgumentException ex) {
-        return ResponseEntity.badRequest().body(Map.of(
-                "error", ex.getMessage()
-        ));
+    public ResponseEntity<?> handleIllegalArgument(
+            IllegalArgumentException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request.getRequestURI());
     }
 
     @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<?> handleIllegalState(IllegalStateException ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                "error", ex.getMessage()
-        ));
+    public ResponseEntity<?> handleIllegalState(
+            IllegalStateException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), request.getRequestURI());
     }
 
     @ExceptionHandler(FeignException.Unauthorized.class)
-    public ResponseEntity<?> handleFeignUnauthorized(FeignException.Unauthorized ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
-                "error", "No autorizado al consumir otro servicio"
-        ));
+    public ResponseEntity<?> handleFeignUnauthorized(
+            FeignException.Unauthorized ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, "No autorizado al consumir otro servicio", request.getRequestURI());
     }
 
     @ExceptionHandler(FeignException.Forbidden.class)
-    public ResponseEntity<?> handleFeignForbidden(FeignException.Forbidden ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
-                "error", "Acceso denegado al consumir otro servicio"
-        ));
+    public ResponseEntity<?> handleFeignForbidden(
+            FeignException.Forbidden ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(HttpStatus.FORBIDDEN, "Acceso denegado al consumir otro servicio", request.getRequestURI());
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<?> handleGeneric(Exception ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                "error", ex.getMessage() != null ? ex.getMessage() : "Error interno"
+    public ResponseEntity<?> handleGeneric(
+            Exception ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                ex.getMessage() != null ? ex.getMessage() : "Error interno",
+                request.getRequestURI()
+        );
+    }
+
+    private ResponseEntity<?> buildResponse(HttpStatus status, String message, String path) {
+        return ResponseEntity.status(status).body(Map.of(
+                "timestamp", Instant.now().toString(),
+                "status", status.value(),
+                "error", status.getReasonPhrase(),
+                "message", message,
+                "path", path
         ));
     }
 }

@@ -27,4 +27,10 @@ public interface CoreClient {
 
     @GetMapping("/api/core/empleados/{idEmpleado}")
     EmpleadoCoreResponse obtenerEmpleado(@PathVariable("idEmpleado") Integer idEmpleado);
+
+    @PatchMapping("/api/core/clientes/delete/{id}")
+    void eliminarCliente(@PathVariable("id") Integer id);
+
+    @PatchMapping("/api/core/empleados/{id}/logic-delete")
+    void eliminarEmpleado(@PathVariable("id") Integer id);
 }

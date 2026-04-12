@@ -15,6 +15,8 @@ public interface UsuarioService {
 
     UsuarioResponse registrarEmpleadoCompleto(EmpleadoRegistroRequest request);
 
+    UsuarioResponse registrarAdminCompleto(EmpleadoRegistroRequest request);
+
     UsuarioResponse findById(Integer id);
 
     UsuarioResponse findByUsuario(String usuario);

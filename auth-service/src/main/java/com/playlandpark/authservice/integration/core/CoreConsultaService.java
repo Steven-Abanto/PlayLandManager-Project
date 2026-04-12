@@ -54,6 +54,22 @@ public class CoreConsultaService {
         }
     }
 
+    public void eliminarCliente(Integer id) {
+        try {
+            coreClient.eliminarCliente(id);
+        } catch (FeignException e) {
+            throw new IllegalStateException("Error al eliminar cliente en core-service");
+        }
+    }
+
+    public void eliminarEmpleado(Integer id) {
+        try {
+            coreClient.eliminarEmpleado(id);
+        } catch (FeignException e) {
+            throw new IllegalStateException("Error al eliminar empleado en core-service");
+        }
+    }
+
     private RuntimeException mapFeignException(String accion, FeignException e) {
         String detail = extractDetail(e);
 
@@ -66,16 +82,6 @@ public class CoreConsultaService {
             default -> new IllegalStateException("Error al " + accion + " en core-service. HTTP status: " + e.status() + ". Detalle: " + detail);
         };
     }
-
-//    private String extractDetail(FeignException e) {
-//        String body = e.contentUTF8();
-//
-//        if (body == null || body.isBlank()) {
-//            return "Sin detalle adicional";
-//        }
-//
-//        return body;
-//    }
 
     private String extractDetail(FeignException e) {
         String body = e.contentUTF8();

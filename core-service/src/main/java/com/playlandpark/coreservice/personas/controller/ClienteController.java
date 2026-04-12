@@ -4,6 +4,7 @@ import com.playlandpark.coreservice.personas.dto.cliente.ClienteRequest;
 import com.playlandpark.coreservice.personas.dto.cliente.ClienteResponse;
 import com.playlandpark.coreservice.personas.summary.ClienteSummary;
 import com.playlandpark.coreservice.personas.service.ClienteService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +20,7 @@ public class ClienteController {
     private final ClienteService clienteService;
 
     @PostMapping
-    public ResponseEntity<ClienteResponse> create(@RequestBody ClienteRequest request) {
+    public ResponseEntity<ClienteResponse> create(@Valid @RequestBody ClienteRequest request) {
         ClienteResponse response = clienteService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
