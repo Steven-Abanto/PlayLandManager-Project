@@ -46,6 +46,36 @@ public class UsuarioServiceImpl implements UsuarioService {
         return mapToResponse(guardado);
     }
 
+    @Override
+    @Transactional
+    public UsuarioResponse registrarCliente(UsuarioRequest request) {
+        UsuarioRequest clienteRequest = new UsuarioRequest(
+                request.usuario(),
+                request.contrasena(),
+                RolesUsuario.CLIENTE,
+                null,
+                request.idCliente(),
+                request.activo()
+        );
+
+        return create(clienteRequest);
+    }
+
+    @Override
+    @Transactional
+    public UsuarioResponse registrarEmpleado(UsuarioRequest request) {
+        UsuarioRequest empleadoRequest = new UsuarioRequest(
+                request.usuario(),
+                request.contrasena(),
+                RolesUsuario.EMPLEADO,
+                request.idEmpleado(),
+                null,
+                request.activo()
+        );
+
+        return create(empleadoRequest);
+    }
+
     // Busca un usuario por su id
     @Override
     @Transactional(readOnly = true)

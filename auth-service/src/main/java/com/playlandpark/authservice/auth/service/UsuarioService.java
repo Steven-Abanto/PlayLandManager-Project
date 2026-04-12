@@ -9,6 +9,10 @@ public interface UsuarioService {
 
     UsuarioResponse create(UsuarioRequest request);
 
+    UsuarioResponse registrarCliente(UsuarioRequest request);
+
+    UsuarioResponse registrarEmpleado(UsuarioRequest request);
+
     UsuarioResponse findById(Integer id);
 
     UsuarioResponse findByUsuario(String usuario);

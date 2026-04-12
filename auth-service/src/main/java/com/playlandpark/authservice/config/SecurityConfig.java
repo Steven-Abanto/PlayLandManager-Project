@@ -24,7 +24,9 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/h2-console/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/usuarios").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/registro/cliente").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/registro/empleado").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/auth/usuarios").hasRole("ADMIN")
                         .requestMatchers("/api/auth/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/auth/usuarios/**").hasAnyRole("ADMIN", "EMPLEADO")
                         .requestMatchers("/api/auth/usuarios/**").hasRole("ADMIN")
