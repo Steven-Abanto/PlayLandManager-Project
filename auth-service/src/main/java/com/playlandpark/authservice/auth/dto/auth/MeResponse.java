@@ -1,10 +1,13 @@
 package com.playlandpark.authservice.auth.dto.auth;
 
+import java.util.List;
+
 public record MeResponse(
+        String username,
+        List<String> roles,
+        String rolPrincipal,
         Integer idUsuario,
-        String usuario,
-        String rol,
-        Boolean activo,
         Integer idEmpleado,
-        Integer idCliente
+        Integer idCliente,
+        Boolean activo
 ) {}

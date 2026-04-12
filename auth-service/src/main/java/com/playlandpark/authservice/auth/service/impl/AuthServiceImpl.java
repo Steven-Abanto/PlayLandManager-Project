@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -20,13 +22,15 @@ public class AuthServiceImpl implements AuthService {
         Usuario usuario = usuarioRepository.findByUsuario(username)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + username));
 
+        String rolPrincipal = usuario.getRol().name();
         return new MeResponse(
-                usuario.getIdUsuario(),
                 usuario.getUsuario(),
-                usuario.getRol().name(),
-                usuario.getActivo(),
+                List.of(rolPrincipal),
+                rolPrincipal,
+                usuario.getIdUsuario(),
                 usuario.getIdEmpleado(),
-                usuario.getIdCliente()
+                usuario.getIdCliente(),
+                usuario.getActivo()
         );
     }
 }
