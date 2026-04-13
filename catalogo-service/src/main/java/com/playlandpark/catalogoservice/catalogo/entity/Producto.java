@@ -45,6 +45,9 @@ public class Producto {
     @Column(nullable = false)
     private Boolean activo = true;
 
+    @Column(nullable = false)
+    private String imagenUrl;
+
     //Búsqueda inversa para promociones del producto
     @ManyToMany(mappedBy = "productos")
     private Set<Promocion> promociones = new java.util.HashSet<>();

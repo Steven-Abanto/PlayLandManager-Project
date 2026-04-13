@@ -13,5 +13,6 @@ public record ProductoResponse(
         String upc,
         String sku,
         Boolean esServicio,
-        Boolean activo
+        Boolean activo,
+        String imagenUrl
 ) {}

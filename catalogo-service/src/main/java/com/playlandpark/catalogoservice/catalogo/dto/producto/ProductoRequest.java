@@ -12,5 +12,6 @@ public record ProductoRequest(
         String upc,
         String sku,
         Boolean esServicio,
-        Boolean activo
+        Boolean activo,
+        String imagenUrl
 ) {}

@@ -196,6 +196,8 @@ public class ProductoServiceImpl implements ProductoService {
 
         if (request.esServicio() != null) producto.setEsServicio(request.esServicio());
         if (request.activo() != null) producto.setActivo(request.activo());
+
+        if (request.imagenUrl() != null) producto.setImagenUrl(request.imagenUrl());
     }
 
     // Convierte la entidad Producto a su DTO de respuesta completo
@@ -211,7 +213,8 @@ public class ProductoServiceImpl implements ProductoService {
                 p.getUpc(),
                 p.getSku(),
                 p.getEsServicio(),
-                p.getActivo()
+                p.getActivo(),
+                p.getImagenUrl()
         );
     }
 
