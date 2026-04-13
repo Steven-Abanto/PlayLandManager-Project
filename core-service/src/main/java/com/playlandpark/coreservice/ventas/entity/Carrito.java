@@ -25,6 +25,9 @@ public class Carrito {
     @Column(nullable = false)
     private String estado;
 
+    @Column(name = "tipo_compra", nullable = false)
+    private String tipoCompra;
+
     @Column(name = "codigo_promocion")
     private String codigoPromocion;
 
@@ -35,5 +38,5 @@ public class Carrito {
     private LocalDateTime fechaCreacion = LocalDateTime.now();
 
     @OneToMany(mappedBy = "carrito", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<CarritoDetalle> detalles = new ArrayList<>();;
+    private List<CarritoDetalle> detalles = new ArrayList<>();
 }

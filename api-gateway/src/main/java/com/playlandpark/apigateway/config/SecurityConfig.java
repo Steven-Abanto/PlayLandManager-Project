@@ -56,6 +56,7 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.PATCH, "/api/catalogo/promociones/delete/**").hasRole("ADMIN")
                         .pathMatchers(HttpMethod.PATCH, "/api/catalogo/promociones/**").hasRole("ADMIN")
 
+                        .pathMatchers("/api/core/carrito/**").hasAnyRole("CLIENTE", "EMPLEADO")
                         .anyExchange().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt

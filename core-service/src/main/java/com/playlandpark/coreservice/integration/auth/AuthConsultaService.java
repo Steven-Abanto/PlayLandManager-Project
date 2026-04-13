@@ -27,4 +27,12 @@ public class AuthConsultaService {
             );
         }
     }
+
+    public UsuarioData obtenerUsuarioParaCarrito(Integer idUsuario) {
+        try {
+            return authClient.obtenerUsuarioParaCarrito(idUsuario);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Acceso denegado al consultar auth-service");
+        }
+    }
 }

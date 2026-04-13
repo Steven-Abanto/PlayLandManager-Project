@@ -14,4 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 public interface AuthClient {
     @GetMapping("/api/auth/usuarios/{id}")
     UsuarioData obtenerUsuario(@PathVariable("id") Integer idUsuario);
+
+    @GetMapping("/api/auth/usuarios/{idUsuario}/carrito")
+    UsuarioData obtenerUsuarioParaCarrito(@PathVariable Integer idUsuario);
 }

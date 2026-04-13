@@ -2,6 +2,7 @@ package com.playlandpark.coreservice.ventas.controller;
 
 import com.playlandpark.coreservice.ventas.dto.carrito.CarritoDescuentoRequest;
 import com.playlandpark.coreservice.ventas.dto.carrito.CarritoItemRequest;
+import com.playlandpark.coreservice.ventas.dto.carrito.CarritoRequest;
 import com.playlandpark.coreservice.ventas.dto.carrito.CarritoResponse;
 import com.playlandpark.coreservice.ventas.service.CarritoService;
 import lombok.RequiredArgsConstructor;
@@ -23,9 +24,10 @@ public class CarritoController {
         return ResponseEntity.ok(carritoService.findAllActiveCart());
     }
 
-    @PostMapping("/active/{idUsuario}")
-    public ResponseEntity<CarritoResponse> getOrCreateActiveCart(@PathVariable Integer idUsuario) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(carritoService.getOrCreateActiveCart(idUsuario));
+    @PostMapping("/active")
+    public ResponseEntity<CarritoResponse> getOrCreateActiveCart(@RequestBody CarritoRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(carritoService.getOrCreateActiveCart(request));
     }
 
     @GetMapping("/{idCarrito}")
@@ -52,8 +54,10 @@ public class CarritoController {
     }
 
     @PostMapping("/{idCarrito}/promotion")
-    public ResponseEntity<CarritoResponse> applyPromotion(@PathVariable Integer idCarrito,
-                                                          @RequestBody CarritoDescuentoRequest request) {
+    public ResponseEntity<CarritoResponse> applyPromotion(
+            @PathVariable Integer idCarrito,
+            @RequestBody CarritoDescuentoRequest request
+    ) {
         return ResponseEntity.ok(carritoService.applyPromotion(idCarrito, request));
     }
 

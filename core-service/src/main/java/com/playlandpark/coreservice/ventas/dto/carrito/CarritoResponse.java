@@ -9,6 +9,7 @@ public record CarritoResponse(
         Integer idCarrito,
         Integer idUsuario,
         String estado,
+        String tipoCompra,
         String codigoPromocion,
         LocalDateTime fechaCreacion,
         List<CarritoDetalleResponse> detalles

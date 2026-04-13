@@ -28,6 +28,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/core/empleados").hasRole("ADMIN")
                         .requestMatchers("/api/core/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/core/empleados/**").hasAnyRole("ADMIN", "EMPLEADO")
+                        .requestMatchers("/api/core/carrito/**").hasAnyRole("CLIENTE", "EMPLEADO")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

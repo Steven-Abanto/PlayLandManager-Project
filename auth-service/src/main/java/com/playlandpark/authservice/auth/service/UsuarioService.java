@@ -2,6 +2,7 @@ package com.playlandpark.authservice.auth.service;
 
 import com.playlandpark.authservice.auth.dto.registro.ClienteRegistroRequest;
 import com.playlandpark.authservice.auth.dto.registro.EmpleadoRegistroRequest;
+import com.playlandpark.authservice.auth.dto.usuario.UsuarioCarritoResponse;
 import com.playlandpark.authservice.auth.dto.usuario.UsuarioRequest;
 import com.playlandpark.authservice.auth.dto.usuario.UsuarioResponse;
 
@@ -24,6 +25,8 @@ public interface UsuarioService {
     List<UsuarioResponse> findByRol(String rol, boolean onlyActive);
 
     List<UsuarioResponse> findAll();
+
+    UsuarioCarritoResponse findForCart(Integer idUsuario);
 
     UsuarioResponse update(Integer id, UsuarioRequest request);
 

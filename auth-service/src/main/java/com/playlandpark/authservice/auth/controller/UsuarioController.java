@@ -1,5 +1,6 @@
 package com.playlandpark.authservice.auth.controller;
 
+import com.playlandpark.authservice.auth.dto.usuario.UsuarioCarritoResponse;
 import com.playlandpark.authservice.auth.dto.usuario.UsuarioRequest;
 import com.playlandpark.authservice.auth.dto.usuario.UsuarioResponse;
 import com.playlandpark.authservice.auth.service.UsuarioService;
@@ -27,6 +28,11 @@ public class UsuarioController {
     @GetMapping("/{id}")
     public ResponseEntity<UsuarioResponse> findById(@PathVariable Integer id) {
         return ResponseEntity.ok(usuarioService.findById(id));
+    }
+
+    @GetMapping("/{idUsuario}/carrito")
+    public ResponseEntity<UsuarioCarritoResponse> findForCart(@PathVariable Integer idUsuario) {
+        return ResponseEntity.ok(usuarioService.findForCart(idUsuario));
     }
 
     @GetMapping("/usuario/{usuario}")

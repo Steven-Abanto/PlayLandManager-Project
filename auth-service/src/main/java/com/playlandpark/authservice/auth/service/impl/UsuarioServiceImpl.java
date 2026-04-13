@@ -2,6 +2,7 @@ package com.playlandpark.authservice.auth.service.impl;
 
 import com.playlandpark.authservice.auth.dto.registro.ClienteRegistroRequest;
 import com.playlandpark.authservice.auth.dto.registro.EmpleadoRegistroRequest;
+import com.playlandpark.authservice.auth.dto.usuario.UsuarioCarritoResponse;
 import com.playlandpark.authservice.auth.dto.usuario.UsuarioRequest;
 import com.playlandpark.authservice.auth.dto.usuario.UsuarioResponse;
 import com.playlandpark.authservice.auth.entity.Usuario;
@@ -220,6 +221,26 @@ public class UsuarioServiceImpl implements UsuarioService {
             }
             throw e;
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UsuarioCarritoResponse findForCart(Integer idUsuario) {
+        if (idUsuario == null) {
+            throw new IllegalArgumentException("El idUsuario es obligatorio.");
+        }
+
+        Usuario u = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + idUsuario));
+
+        return new UsuarioCarritoResponse(
+                u.getIdUsuario(),
+                u.getUsuario(),
+                u.getRol().name(),
+                u.getActivo(),
+                u.getIdEmpleado(),
+                u.getIdCliente()
+        );
     }
 
     @Override

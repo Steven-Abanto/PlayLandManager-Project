@@ -1,6 +1,5 @@
 package com.playlandpark.coreservice.ventas.service.impl;
 
-import com.playlandpark.coreservice.client.auth.AuthClient;
 import com.playlandpark.coreservice.client.auth.dto.UsuarioData;
 import com.playlandpark.coreservice.client.catalogo.dto.ProductoData;
 import com.playlandpark.coreservice.client.catalogo.dto.PromocionData;
@@ -8,6 +7,7 @@ import com.playlandpark.coreservice.integration.auth.AuthConsultaService;
 import com.playlandpark.coreservice.integration.catalogo.CatalogoConsultaService;
 import com.playlandpark.coreservice.ventas.dto.carrito.CarritoDescuentoRequest;
 import com.playlandpark.coreservice.ventas.dto.carrito.CarritoItemRequest;
+import com.playlandpark.coreservice.ventas.dto.carrito.CarritoRequest;
 import com.playlandpark.coreservice.ventas.dto.carrito.CarritoResponse;
 import com.playlandpark.coreservice.ventas.dto.carritodetalle.CarritoDetalleResponse;
 import com.playlandpark.coreservice.ventas.entity.Carrito;
@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -31,6 +30,9 @@ import java.util.Set;
 public class CarritoServiceImpl implements CarritoService {
 
     private static final String ESTADO_ABIERTO = "ABIERTO";
+    private static final String ROL_CLIENTE = "CLIENTE";
+    private static final String ROL_EMPLEADO = "EMPLEADO";
+    private static final Set<String> TIPOS_COMPRA_VALIDOS = Set.of("ONLINE", "LOCAL");
 
     private final CarritoRepository carritoRepository;
     private final CarritoDetalleRepository carritoDetalleRepository;
@@ -38,31 +40,56 @@ public class CarritoServiceImpl implements CarritoService {
     private final AuthConsultaService authConsultaService;
     private final CatalogoConsultaService catalogoConsultaService;
 
-    // Regla: cada usuario solo puede tener un carrito ABIERTO.
-    // Si el usuario ya tiene un carrito ABIERTO, se devuelve ese. Si no, se crea uno nuevo.
     @Override
     @Transactional
-    public CarritoResponse getOrCreateActiveCart(Integer idUsuario) {
-        if (idUsuario == null) throw new IllegalArgumentException("El idUsuario es obligatorio.");
+    public CarritoResponse getOrCreateActiveCart(CarritoRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("La solicitud no puede ser nula.");
+        }
 
-        Carrito cart = carritoRepository.findFirstByIdUsuarioAndEstado(idUsuario, ESTADO_ABIERTO)
+        if (request.idUsuario() == null) {
+            throw new IllegalArgumentException("El idUsuario es obligatorio.");
+        }
+
+        if (request.tipoCompra() == null || request.tipoCompra().isBlank()) {
+            throw new IllegalArgumentException("El tipoCompra es obligatorio.");
+        }
+
+        String tipoCompra = request.tipoCompra().trim().toUpperCase();
+
+        if (!TIPOS_COMPRA_VALIDOS.contains(tipoCompra)) {
+            throw new IllegalArgumentException("Tipo de compra inválido: " + request.tipoCompra());
+        }
+
+        UsuarioData usuario = authConsultaService.obtenerUsuarioParaCarrito(request.idUsuario());
+        if (usuario == null) {
+            throw new IllegalArgumentException("Usuario no encontrado: " + request.idUsuario());
+        }
+
+        validarRolPuedeCrearCarrito(usuario);
+        validarTipoCompraPorRol(usuario, tipoCompra);
+
+        Carrito cart = carritoRepository.findFirstByIdUsuarioAndEstado(request.idUsuario(), ESTADO_ABIERTO)
                 .orElseGet(() -> {
-                    UsuarioData u = authConsultaService.obtenerUsuario(idUsuario);
-                    if (u == null)
-                        throw new IllegalArgumentException("Usuario no encontrado: " + idUsuario);
-
                     Carrito c = new Carrito();
-                    c.setIdUsuario(idUsuario);
+                    c.setIdUsuario(request.idUsuario());
                     c.setEstado(ESTADO_ABIERTO);
+                    c.setTipoCompra(tipoCompra);
                     c.setFechaCreacion(LocalDateTime.now());
                     return carritoRepository.save(c);
                 });
 
-        // Si ya existía carrito, valida caducidad de la promoción y recalcula por si acaso
+        if (cart.getTipoCompra() == null || cart.getTipoCompra().isBlank()) {
+            cart.setTipoCompra(tipoCompra);
+            carritoRepository.save(cart);
+        }
+
+        validarTipoCompra(cart);
+        validarTipoCompraPorRol(usuario, cart.getTipoCompra());
+
         return recalculate(cart.getIdCarrito());
     }
 
-    // Busca un carrito por su id
     @Override
     @Transactional(readOnly = true)
     public CarritoResponse findById(Integer idCarrito) {
@@ -72,7 +99,7 @@ public class CarritoServiceImpl implements CarritoService {
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public List<CarritoResponse> findAllActiveCart() {
         List<Carrito> carts = carritoRepository.findByEstado(ESTADO_ABIERTO);
         return carts.stream().map(this::mapToResponse).toList();
@@ -84,8 +111,10 @@ public class CarritoServiceImpl implements CarritoService {
         validateItemRequest(request);
 
         Carrito cart = getOpenCart(request.idCarrito());
+        validarTipoCompra(cart);
 
         ProductoData product = catalogoConsultaService.obtenerProducto(request.idProducto());
+        validarProductoCarrito(product);
         validarStockSiAplica(product, request.cantidad());
 
         CarritoDetalle detail = carritoDetalleRepository
@@ -100,16 +129,24 @@ public class CarritoServiceImpl implements CarritoService {
             detail.setPrecio(product.precio());
             detail.setCantidad(request.cantidad());
             detail.setDescuento(BigDecimal.ZERO);
+            detail.setIdPromocion(null);
 
-            BigDecimal base = detail.getPrecio().multiply(BigDecimal.valueOf(detail.getCantidad()));
+            BigDecimal base = calcularBase(detail.getPrecio(), detail.getCantidad());
             detail.setSubtotal(base);
 
             carritoDetalleRepository.save(detail);
         } else {
-            int nuevaCantidad = request.cantidad();
-            validarStockSiAplica(product, nuevaCantidad);
+            validarStockSiAplica(product, request.cantidad());
 
-            detail.setCantidad(nuevaCantidad);
+            detail.setDescripcionProducto(product.descripcion());
+            detail.setPrecio(product.precio());
+            detail.setCantidad(request.cantidad());
+
+            BigDecimal base = calcularBase(detail.getPrecio(), detail.getCantidad());
+            detail.setDescuento(BigDecimal.ZERO);
+            detail.setSubtotal(base);
+            detail.setIdPromocion(null);
+
             carritoDetalleRepository.save(detail);
         }
 
@@ -121,10 +158,6 @@ public class CarritoServiceImpl implements CarritoService {
     public CarritoResponse updateItemQuantity(CarritoItemRequest request) {
         validateItemRequest(request);
 
-        if (request.cantidad() <= 0) {
-            throw new IllegalArgumentException("La cantidad debe ser mayor a 0.");
-        }
-
         Carrito cart = getOpenCart(request.idCarrito());
 
         CarritoDetalle detail = carritoDetalleRepository
@@ -132,22 +165,32 @@ public class CarritoServiceImpl implements CarritoService {
                 .orElseThrow(() -> new IllegalArgumentException("El producto no existe en el carrito."));
 
         ProductoData product = catalogoConsultaService.obtenerProducto(request.idProducto());
-
-        // validar contra la nueva cantidad
+        validarProductoCarrito(product);
         validarStockSiAplica(product, request.cantidad());
 
+        detail.setDescripcionProducto(product.descripcion());
+        detail.setPrecio(product.precio());
         detail.setCantidad(request.cantidad());
+
+        BigDecimal base = calcularBase(detail.getPrecio(), detail.getCantidad());
+        detail.setDescuento(BigDecimal.ZERO);
+        detail.setSubtotal(base);
+        detail.setIdPromocion(null);
+
         carritoDetalleRepository.save(detail);
 
         return recalculate(cart.getIdCarrito());
     }
 
-    // Elimina un producto del carrito
     @Override
     @Transactional
     public CarritoResponse removeItem(Integer idCarrito, Integer idProducto) {
-        if (idCarrito == null) throw new IllegalArgumentException("El idCarrito es obligatorio.");
-        if (idProducto == null) throw new IllegalArgumentException("El idProducto es obligatorio.");
+        if (idCarrito == null) {
+            throw new IllegalArgumentException("El idCarrito es obligatorio.");
+        }
+        if (idProducto == null) {
+            throw new IllegalArgumentException("El idProducto es obligatorio.");
+        }
 
         Carrito cart = getOpenCart(idCarrito);
 
@@ -160,25 +203,24 @@ public class CarritoServiceImpl implements CarritoService {
         return recalculate(cart.getIdCarrito());
     }
 
-    // Aplica un código de promoción al carrito
-    // Valida que el código exista y esté vigente
     @Override
     @Transactional
     public CarritoResponse applyPromotion(Integer idCarrito, CarritoDescuentoRequest request) {
-        if (idCarrito == null) throw new IllegalArgumentException("El idCarrito es obligatorio.");
-        if (request.codigoPromocion() == null || request.codigoPromocion().isBlank())
+        if (idCarrito == null) {
+            throw new IllegalArgumentException("El idCarrito es obligatorio.");
+        }
+        if (request == null || request.codigoPromocion() == null || request.codigoPromocion().isBlank()) {
             throw new IllegalArgumentException("El código de promoción es obligatorio.");
+        }
 
         Carrito cart = getOpenCart(idCarrito);
 
-        // Regla: si el carrito tiene >3 días, no se acepta promo
         if (isPromotionExpiredByCartAge(cart)) {
             clearPromotion(cart);
             throw new IllegalArgumentException("El carrito tiene más de 3 días. No se puede aplicar el código.");
         }
 
         PromocionData promo = catalogoConsultaService.obtenerPromocionPorCodigo(request.codigoPromocion());
-
         validatePromotionVigency(promo);
 
         cart.setCodigoPromocion(promo.codigo());
@@ -188,7 +230,6 @@ public class CarritoServiceImpl implements CarritoService {
         return recalculate(cart.getIdCarrito());
     }
 
-    // Elimina el código de promoción del carrito
     @Override
     @Transactional
     public CarritoResponse removePromotion(Integer idCarrito) {
@@ -197,7 +238,6 @@ public class CarritoServiceImpl implements CarritoService {
         return recalculate(cart.getIdCarrito());
     }
 
-    // Recalcula los subtotales y descuentos de los detalles del carrito según la promoción vigente
     @Override
     @Transactional
     public CarritoResponse recalculate(Integer idCarrito) {
@@ -217,7 +257,6 @@ public class CarritoServiceImpl implements CarritoService {
             try {
                 promo = catalogoConsultaService.obtenerPromocionPorCodigo(cart.getCodigoPromocion());
 
-                // Si ya no está vigente, se borra
                 if (!isPromotionVigent(promo)) {
                     clearPromotion(cart);
                     promo = null;
@@ -231,28 +270,31 @@ public class CarritoServiceImpl implements CarritoService {
         List<CarritoDetalle> details = carritoDetalleRepository.findByCarrito_IdCarrito(cart.getIdCarrito());
 
         for (CarritoDetalle d : details) {
-            BigDecimal base = d.getPrecio().multiply(BigDecimal.valueOf(d.getCantidad()));
+            BigDecimal base = calcularBase(d.getPrecio(), d.getCantidad());
             d.setDescuento(BigDecimal.ZERO);
             d.setSubtotal(base);
             d.setIdPromocion(null);
         }
 
-        if (promo != null) {
-            Set<String> eligibleProductNames = new HashSet<>(promo.productos());
-
+        if (promo != null && promo.productosIds() != null && !promo.productosIds().isEmpty()) {
             BigDecimal remainingMax = promo.montoMax() != null ? promo.montoMax() : BigDecimal.ZERO;
             BigDecimal percent = promo.porcentaje() != null ? promo.porcentaje() : BigDecimal.ZERO;
 
             for (CarritoDetalle d : details) {
-                if (remainingMax.compareTo(BigDecimal.ZERO) <= 0) break;
+                if (remainingMax.compareTo(BigDecimal.ZERO) <= 0) {
+                    break;
+                }
 
-                String nombreProducto = d.getDescripcionProducto(); // asumir que aquí está el nombre
-                if (!eligibleProductNames.contains(nombreProducto)) continue;
+                if (!promo.productosIds().contains(d.getIdProducto())) {
+                    continue;
+                }
 
-                BigDecimal base = d.getPrecio().multiply(BigDecimal.valueOf(d.getCantidad()));
+                BigDecimal base = calcularBase(d.getPrecio(), d.getCantidad());
                 BigDecimal lineDiscount = base.multiply(percent);
 
-                if (lineDiscount.compareTo(remainingMax) > 0) lineDiscount = remainingMax;
+                if (lineDiscount.compareTo(remainingMax) > 0) {
+                    lineDiscount = remainingMax;
+                }
 
                 d.setDescuento(lineDiscount);
                 d.setSubtotal(base.subtract(lineDiscount));
@@ -267,7 +309,58 @@ public class CarritoServiceImpl implements CarritoService {
         return mapToResponse(cart);
     }
 
-    // ---------------- Helpers ----------------
+    private void validarRolPuedeCrearCarrito(UsuarioData usuario) {
+        String rol = usuario.rolPrincipal();
+
+        if (!ROL_CLIENTE.equalsIgnoreCase(rol) && !ROL_EMPLEADO.equalsIgnoreCase(rol)) {
+            throw new IllegalArgumentException("El rol " + rol + " no puede crear carritos.");
+        }
+    }
+
+    private void validarTipoCompra(Carrito cart) {
+        if (cart.getTipoCompra() == null || cart.getTipoCompra().isBlank()) {
+            throw new IllegalArgumentException("El tipoCompra del carrito es obligatorio.");
+        }
+
+        if (!TIPOS_COMPRA_VALIDOS.contains(cart.getTipoCompra().toUpperCase())) {
+            throw new IllegalArgumentException("Tipo de compra inválido: " + cart.getTipoCompra());
+        }
+    }
+
+    private void validarTipoCompraPorRol(UsuarioData usuario, String tipoCompra) {
+        if (usuario == null) {
+            throw new IllegalArgumentException("Usuario inválido.");
+        }
+
+        if (tipoCompra == null || tipoCompra.isBlank()) {
+            throw new IllegalArgumentException("El tipoCompra es obligatorio.");
+        }
+
+        String rol = usuario.rolPrincipal();
+        String tipo = tipoCompra.trim().toUpperCase();
+
+        if (ROL_CLIENTE.equalsIgnoreCase(rol) && !"ONLINE".equals(tipo)) {
+            throw new IllegalArgumentException("El cliente solo puede usar tipoCompra ONLINE.");
+        }
+
+        if (ROL_EMPLEADO.equalsIgnoreCase(rol) && !"LOCAL".equals(tipo)) {
+            throw new IllegalArgumentException("El empleado solo puede usar tipoCompra LOCAL.");
+        }
+    }
+
+    private void validarProductoCarrito(ProductoData product) {
+        if (product == null) {
+            throw new IllegalArgumentException("Producto no encontrado.");
+        }
+
+        if (Boolean.FALSE.equals(product.activo())) {
+            throw new IllegalArgumentException("El producto está inactivo: " + product.idProducto());
+        }
+
+        if (Boolean.TRUE.equals(product.esServicio())) {
+            throw new IllegalArgumentException("Los servicios no se agregan al carrito.");
+        }
+    }
 
     private void validarStockSiAplica(ProductoData product, Integer cantidadSolicitada) {
         if (Boolean.FALSE.equals(product.esServicio())) {
@@ -281,7 +374,9 @@ public class CarritoServiceImpl implements CarritoService {
     }
 
     private Carrito getOpenCart(Integer idCarrito) {
-        if (idCarrito == null) throw new IllegalArgumentException("El idCarrito es obligatorio.");
+        if (idCarrito == null) {
+            throw new IllegalArgumentException("El idCarrito es obligatorio.");
+        }
 
         Carrito cart = carritoRepository.findById(idCarrito)
                 .orElseThrow(() -> new IllegalArgumentException("Carrito no encontrado: " + idCarrito));
@@ -289,53 +384,68 @@ public class CarritoServiceImpl implements CarritoService {
         if (!ESTADO_ABIERTO.equalsIgnoreCase(cart.getEstado())) {
             throw new IllegalArgumentException("El carrito no está en estado ABIERTO.");
         }
+
         return cart;
     }
 
-    // Valida los datos para agregar o actualizar un producto en el carrito
     private void validateItemRequest(CarritoItemRequest request) {
-        if (request == null) throw new IllegalArgumentException("La solicitud no puede ser nula.");
-        if (request.idCarrito() == null) throw new IllegalArgumentException("El idCarrito es obligatorio.");
-        if (request.idProducto() == null) throw new IllegalArgumentException("El idProducto es obligatorio.");
-        if (request.cantidad() == null) throw new IllegalArgumentException("La cantidad es obligatoria.");
-        if (request.cantidad() <= 0) throw new IllegalArgumentException("La cantidad debe ser mayor a 0.");
+        if (request == null) {
+            throw new IllegalArgumentException("La solicitud no puede ser nula.");
+        }
+        if (request.idCarrito() == null) {
+            throw new IllegalArgumentException("El idCarrito es obligatorio.");
+        }
+        if (request.idProducto() == null) {
+            throw new IllegalArgumentException("El idProducto es obligatorio.");
+        }
+        if (request.cantidad() == null) {
+            throw new IllegalArgumentException("La cantidad es obligatoria.");
+        }
+        if (request.cantidad() <= 0) {
+            throw new IllegalArgumentException("La cantidad debe ser mayor a 0.");
+        }
     }
 
-    // Regla: si el carrito tiene más de 3 días desde su creación, se considera que la promoción ha expirado.
     private boolean isPromotionExpiredByCartAge(Carrito cart) {
         return cart.getFechaCreacion() != null &&
                 cart.getFechaCreacion().plusDays(3).isBefore(LocalDateTime.now());
     }
 
-    // Valida que la promoción esté activa y vigente (fechaInicio <= hoy <= fechaFin)
     private void validatePromotionVigency(PromocionData promo) {
-        if (!isPromotionVigent(promo)) {
+        if (promo == null || !isPromotionVigent(promo)) {
             throw new IllegalArgumentException("La promoción no está vigente o está inactiva.");
         }
     }
 
-    // Valida que la promoción esté activa y vigente (fechaInicio <= hoy <= fechaFin)
     private boolean isPromotionVigent(PromocionData promo) {
-        if (promo.activo() == null || !promo.activo()) return false;
+        if (promo.activo() == null || !promo.activo()) {
+            return false;
+        }
 
         LocalDate today = LocalDate.now();
-        if (promo.fechaInicio() != null && today.isBefore(promo.fechaInicio())) return false;
-        if (promo.fechaFin() != null && today.isAfter(promo.fechaFin())) return false;
+        if (promo.fechaInicio() != null && today.isBefore(promo.fechaInicio())) {
+            return false;
+        }
+        if (promo.fechaFin() != null && today.isAfter(promo.fechaFin())) {
+            return false;
+        }
 
         return true;
     }
 
-    // Elimina el código de promoción del carrito y recalcula sin promoción
     private void clearPromotion(Carrito cart) {
         cart.setCodigoPromocion(null);
         cart.setIdPromocion(null);
         carritoRepository.save(cart);
     }
 
-    // Mapea un Carrito a su DTO de respuesta, incluyendo detalles y resumen de usuario/productos
-    private CarritoResponse mapToResponse(Carrito cart) {
-        UsuarioData usuario = authConsultaService.obtenerUsuario(cart.getIdUsuario());
+    private BigDecimal calcularBase(BigDecimal precio, Integer cantidad) {
+        BigDecimal precioSeguro = precio != null ? precio : BigDecimal.ZERO;
+        int cantidadSegura = cantidad != null ? cantidad : 0;
+        return precioSeguro.multiply(BigDecimal.valueOf(cantidadSegura));
+    }
 
+    private CarritoResponse mapToResponse(Carrito cart) {
         var details = carritoDetalleRepository.findByCarrito_IdCarrito(cart.getIdCarrito());
 
         var detailResponses = details.stream().map(d ->
@@ -354,6 +464,7 @@ public class CarritoServiceImpl implements CarritoService {
                 cart.getIdCarrito(),
                 cart.getIdUsuario(),
                 cart.getEstado(),
+                cart.getTipoCompra(),
                 cart.getCodigoPromocion(),
                 cart.getFechaCreacion(),
                 detailResponses
