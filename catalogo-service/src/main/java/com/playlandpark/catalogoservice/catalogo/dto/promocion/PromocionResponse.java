@@ -9,10 +9,12 @@ public record PromocionResponse(
         String codigo,
         String nombre,
         String descripcion,
+        String imagenUrl,
         BigDecimal porcentaje,
         BigDecimal montoMax,
         LocalDate fechaInicio,
         LocalDate fechaFin,
         Boolean activo,
+        Set<Integer> productosIds,
         Set<String> productos
 ) {}

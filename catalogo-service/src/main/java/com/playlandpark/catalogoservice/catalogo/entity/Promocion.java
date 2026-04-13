@@ -29,7 +29,11 @@ public class Promocion {
     @Column(nullable = false)
     private String nombre;
 
+    @Column(name = "descripcion")
     private String descripcion;
+
+    @Column(name = "imagen_url")
+    private String imagenUrl;
 
     @Column(nullable = false, precision = 3, scale = 2)
     private BigDecimal porcentaje;

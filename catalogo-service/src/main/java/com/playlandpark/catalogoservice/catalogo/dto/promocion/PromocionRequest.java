@@ -8,6 +8,7 @@ public record PromocionRequest(
         String codigo,
         String nombre,
         String descripcion,
+        String imagenUrl,
         BigDecimal porcentaje,
         BigDecimal montoMax,
         LocalDate fechaInicio,

@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -164,6 +165,9 @@ public class PromocionServiceImpl implements PromocionService {
                 request.montoMax().compareTo(BigDecimal.ZERO) < 0)
             throw new IllegalArgumentException("El monto máximo no puede ser negativo.");
 
+        if (request.fechaInicio() == null || request.fechaFin() == null)
+            throw new IllegalArgumentException("Fechas obligatorias");
+
         if (request.fechaFin().isBefore(request.fechaInicio()))
             throw new IllegalArgumentException("La fecha fin no puede ser menor que la fecha inicio.");
     }
@@ -174,6 +178,7 @@ public class PromocionServiceImpl implements PromocionService {
         if (request.codigo() != null) promocion.setCodigo(request.codigo());
         if (request.nombre() != null) promocion.setNombre(request.nombre());
         if (request.descripcion() != null) promocion.setDescripcion(request.descripcion());
+        if (request.imagenUrl()  != null) promocion.setImagenUrl(request.imagenUrl());
         if (request.porcentaje() != null) promocion.setPorcentaje(request.porcentaje());
         if (request.montoMax() != null) promocion.setMontoMax(request.montoMax());
         if (request.fechaInicio() != null) promocion.setFechaInicio(request.fechaInicio());
@@ -198,27 +203,34 @@ public class PromocionServiceImpl implements PromocionService {
                 .map(Producto::getIdProducto)
                 .collect(java.util.stream.Collectors.toSet());
 
-        // Buscar las descripciones de los productos
-        Set<String> productos = productosIds
+//        // Buscar las descripciones de los productos
+//        Set<String> productos = productosIds
+//                .stream()
+//                .map(id -> {
+//                    // Para cada ID de producto, buscamos la descripción en el repositorio
+//                    Producto producto = productoRepository.findById(id)
+//                            .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado con id: " + id));
+//                    return producto.getDescripcion();  // Devolvemos la descripción
+//                })
+//                .collect(java.util.stream.Collectors.toSet());
+
+        Set<String> productos = p.getProductos()
                 .stream()
-                .map(id -> {
-                    // Para cada ID de producto, buscamos la descripción en el repositorio
-                    Producto producto = productoRepository.findById(id)
-                            .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado con id: " + id));
-                    return producto.getDescripcion();  // Devolvemos la descripción
-                })
-                .collect(java.util.stream.Collectors.toSet());
+                .map(Producto::getDescripcion)
+                .collect(Collectors.toSet());
 
         return new PromocionResponse(
                 p.getIdPromocion(),
                 p.getCodigo(),
                 p.getNombre(),
                 p.getDescripcion(),
+                p.getImagenUrl(),
                 p.getPorcentaje(),
                 p.getMontoMax(),
                 p.getFechaInicio(),
                 p.getFechaFin(),
                 p.getActivo(),
+                productosIds,
                 productos
         );
     }
