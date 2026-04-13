@@ -109,6 +109,14 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: 123456
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+      KEYCLOAK_SERVER_URL: http://keycloak:8080
+      KEYCLOAK_REALM: playland-realm
+      KEYCLOAK_LOGIN_CLIENT_ID: playland-login-backend
+      KEYCLOAK_LOGIN_CLIENT_SECRET: BdRE2FZ8d2QMB8u5Rpc5McxXEPz7ghGc
+
+      JWT_ISSUER_URI: http://keycloak:8080/realms/playland-realm
+      JWT_JWK_SET_URI: http://keycloak:8080/realms/playland-realm/protocol/openid-connect/certs
     ports:
       - "8081:8081"
     networks:
@@ -127,6 +135,9 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: 123456
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+      JWT_ISSUER_URI: http://keycloak:8080/realms/playland-realm
+      JWT_JWK_SET_URI: http://keycloak:8080/realms/playland-realm/protocol/openid-connect/certs
     ports:
       - "8082:8082"
     networks:
@@ -151,6 +162,9 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: 123456
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+      JWT_ISSUER_URI: http://keycloak:8080/realms/playland-realm
+      JWT_JWK_SET_URI: http://keycloak:8080/realms/playland-realm/protocol/openid-connect/certs
     ports:
       - "8083:8083"
     networks:
@@ -174,6 +188,9 @@ services:
       AUTH_SERVICE_URI: http://auth-service:8081
       CATALOGO_SERVICE_URI: http://catalogo-service:8082
       CORE_SERVICE_URI: http://core-service:8083
+
+      JWT_ISSUER_URI: http://keycloak:8080/realms/playland-realm
+      JWT_JWK_SET_URI: http://keycloak:8080/realms/playland-realm/protocol/openid-connect/certs
     ports:
       - "8080:8080"
     networks:

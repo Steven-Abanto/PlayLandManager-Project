@@ -1,10 +1,18 @@
 package com.playlandpark.authservice.auth.dto.auth;
 
-public record LoginResponse (
-        String token,
-        String tipo,
-        Long expiraEn,
-        String usuario,
-        String rol
-){
+import java.util.List;
+
+public record LoginResponse(
+        String accessToken,
+        String refreshToken,
+        String tokenType,
+        Long expiresIn,
+        String username,
+        List<String> roles,
+        String rolPrincipal,
+        Integer idUsuario,
+        Integer idEmpleado,
+        Integer idCliente,
+        Boolean activo
+) {
 }
