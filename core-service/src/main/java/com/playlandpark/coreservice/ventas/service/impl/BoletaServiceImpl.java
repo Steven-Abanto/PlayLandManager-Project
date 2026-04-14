@@ -218,7 +218,7 @@ public class BoletaServiceImpl implements BoletaService {
         if (request == null) throw new IllegalArgumentException("La solicitud no puede ser nula.");
         if (request.idCarrito() == null) throw new IllegalArgumentException("El idCarrito es obligatorio.");
         if (request.idCaja() == null) throw new IllegalArgumentException("El idCaja es obligatorio.");
-        if (request.idEmpleado() == null) throw new IllegalArgumentException("El idEmpleado es obligatorio.");
+//        if (request.idEmpleado() == null) throw new IllegalArgumentException("El idEmpleado es obligatorio.");
         if (request.tipoDocuVenta() == null) throw new IllegalArgumentException("El tipoDocuVenta es obligatorio.");
 
         Carrito carrito = carritoRepository.findById(request.idCarrito())
@@ -228,21 +228,57 @@ public class BoletaServiceImpl implements BoletaService {
             throw new IllegalArgumentException("El carrito no está ABIERTO. Estado actual: " + carrito.getEstado());
         }
 
+        String tipoCompra = carrito.getTipoCompra();
+        if (tipoCompra == null || tipoCompra.isBlank()) {
+            throw new IllegalArgumentException("El carrito no tiene tipoCompra definido.");
+        }
+
         List<CarritoDetalle> carritoDetalles = carritoDetalleRepository.findByCarrito_IdCarrito(request.idCarrito());
         if (carritoDetalles == null || carritoDetalles.isEmpty()) {
             throw new IllegalArgumentException("El carrito no tiene productos. No se puede facturar.");
         }
 
-        Caja caja = cajaRepository.findById(request.idCaja())
-                .orElseThrow(() -> new IllegalArgumentException("Caja no encontrada: " + request.idCaja()));
-
-        Empleado empleado = empleadoRepository.findById(request.idEmpleado())
-                .orElseThrow(() -> new IllegalArgumentException("Empleado no encontrado: " + request.idEmpleado()));
-
+        Caja caja;
+        Empleado empleado = null;
         Cliente cliente = null;
-        if (request.idCliente() != null) {
+
+        if ("ONLINE".equalsIgnoreCase(tipoCompra)) {
+            Integer idCajaOnline = request.idCaja() != null ? request.idCaja() : 1;
+            Integer idEmpleadoOnline = request.idEmpleado() != null ? request.idEmpleado() : 1;
+
+            caja = cajaRepository.findById(idCajaOnline)
+                    .orElseThrow(() -> new IllegalArgumentException("Caja ONLINE no encontrada: " + idCajaOnline));
+
+            empleado = empleadoRepository.findById(idEmpleadoOnline)
+                    .orElseThrow(() -> new IllegalArgumentException("Empleado ONLINE no encontrado: " + idEmpleadoOnline));
+
+            if (request.idCliente() == null) {
+                throw new IllegalArgumentException("El idCliente es obligatorio para compras ONLINE.");
+            }
+
             cliente = clienteRepository.findById(request.idCliente())
                     .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado: " + request.idCliente()));
+        } else if ("LOCAL".equalsIgnoreCase(tipoCompra)) {
+            if (request.idCaja() == null) {
+                throw new IllegalArgumentException("El idCaja es obligatorio para compras LOCAL.");
+            }
+
+            if (request.idEmpleado() == null) {
+                throw new IllegalArgumentException("El idEmpleado es obligatorio para compras LOCAL.");
+            }
+
+            caja = cajaRepository.findById(request.idCaja())
+                    .orElseThrow(() -> new IllegalArgumentException("Caja no encontrada: " + request.idCaja()));
+
+            empleado = empleadoRepository.findById(request.idEmpleado())
+                    .orElseThrow(() -> new IllegalArgumentException("Empleado no encontrado: " + request.idEmpleado()));
+
+            if (request.idCliente() != null) {
+                cliente = clienteRepository.findById(request.idCliente())
+                        .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado: " + request.idCliente()));
+            }
+        } else {
+            throw new IllegalArgumentException("Tipo de compra inválido: " + tipoCompra);
         }
 
         // ------------------ Revalidar productos contra catálogo ------------------
@@ -580,12 +616,15 @@ public class BoletaServiceImpl implements BoletaService {
                 c.getCodCaja()
         );
 
-        EmpleadoBoletaResponse empleado = new EmpleadoBoletaResponse(
-                e.getIdEmpleado(),
-                e.getNombre(),
-                e.getApePaterno(),
-                e.getApeMaterno()
-        );
+        EmpleadoBoletaResponse empleado = null;
+        if (e != null) {
+            empleado = new EmpleadoBoletaResponse(
+                    e.getIdEmpleado(),
+                    e.getNombre(),
+                    e.getApePaterno(),
+                    e.getApeMaterno()
+            );
+        }
 
         ClienteBoletaResponse cliente = null;
         if (cli != null) {
