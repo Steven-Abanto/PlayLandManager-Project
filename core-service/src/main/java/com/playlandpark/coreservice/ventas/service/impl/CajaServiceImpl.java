@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@SuppressWarnings("LanguageDetectionInspection")
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -21,6 +22,7 @@ public class CajaServiceImpl implements CajaService {
 
     private static final String ESTADO_ABIERTA = "ABIERTA";
     private static final String ESTADO_CERRADA = "CERRADA";
+    private static final String CAJA_ONLINE = "CAJA_ONLINE";
 
     private final CajaRepository cajaRepository;
 
@@ -30,6 +32,16 @@ public class CajaServiceImpl implements CajaService {
         validateOpenRequest(request);
 
         String codCaja = request.codCaja().trim();
+        String usuApertura = request.usuApertura().trim();
+
+        if (CAJA_ONLINE.equalsIgnoreCase(codCaja)) {
+            throw new IllegalArgumentException("La caja ONLINE no se puede abrir manualmente.");
+        }
+
+        boolean usuarioYaTieneCajaAbierta = cajaRepository.existsByUsuAperturaAndEstado(usuApertura, ESTADO_ABIERTA);
+        if (usuarioYaTieneCajaAbierta) {
+            throw new IllegalArgumentException("El usuario ya tiene una caja ABIERTA.");
+        }
 
         boolean cajaAbiertaExiste = cajaRepository
                 .findFirstByCodCajaAndEstadoOrderByIdCajaDesc(codCaja, ESTADO_ABIERTA)
@@ -37,14 +49,12 @@ public class CajaServiceImpl implements CajaService {
 
         // Si ya existe una caja ABIERTA con el mismo código, no se permite abrir otra vez
         if (cajaAbiertaExiste) {
-            throw new IllegalArgumentException(
-                    "Ya existe una caja ABIERTA con el código: " + codCaja
-            );
+            throw new IllegalArgumentException("Ya existe una caja ABIERTA con el código: " + codCaja);
         }
 
         Caja caja = new Caja();
-        caja.setCodCaja(request.codCaja().trim());
-        caja.setUsuApertura(request.usuApertura().trim());
+        caja.setCodCaja(codCaja);
+        caja.setUsuApertura(usuApertura);
         caja.setMontoApertura(request.montoApertura());
         caja.setHoraApertura(LocalDateTime.now());
         caja.setEstado(ESTADO_ABIERTA);
@@ -59,17 +69,27 @@ public class CajaServiceImpl implements CajaService {
     public CajaResponse close(CajaCierreRequest request) {
         validateCloseRequest(request);
 
-        Caja caja = cajaRepository.findFirstByCodCajaAndEstadoOrderByIdCajaDesc(request.codCaja().trim(), ESTADO_ABIERTA)
-                .orElseThrow(() -> new IllegalArgumentException("Caja no encontrada: " + request.codCaja()));
+        String codCaja = request.codCaja().trim();
+        String usuCierre = request.usuCierre().trim();
+
+        if (CAJA_ONLINE.equalsIgnoreCase(codCaja)) {
+            throw new IllegalArgumentException("La caja ONLINE no se puede cerrar manualmente.");
+        }
+
+        Caja caja = cajaRepository.findFirstByCodCajaAndEstadoOrderByIdCajaDesc(codCaja, ESTADO_ABIERTA)
+                .orElseThrow(() -> new IllegalArgumentException("Caja ABIERTA no encontrada con código: " + codCaja));
 
         if (!ESTADO_ABIERTA.equalsIgnoreCase(caja.getEstado())) {
             throw new IllegalArgumentException("Solo se puede cerrar una caja en estado ABIERTA.");
         }
 
-        caja.setUsuCierre(request.usuCierre().trim());
+        if (caja.getUsuApertura() == null || !caja.getUsuApertura().equalsIgnoreCase(usuCierre)) {
+            throw new IllegalArgumentException("Solo el mismo usuario que abrió la caja puede cerrarla.");
+        }
+
+        caja.setUsuCierre(usuCierre);
         caja.setMontoCierre(request.montoCierre());
         caja.setHoraCierre(LocalDateTime.now());
-
         caja.setEstado(ESTADO_CERRADA);
 
         Caja saved = cajaRepository.save(caja);
@@ -100,7 +120,30 @@ public class CajaServiceImpl implements CajaService {
         return mapToResponse(caja);
     }
 
-    // Recupera todas las cajas
+    // Busca la caja más reciente en estado ABIERTA para un usuario específico.
+    // Si no hay una caja ABIERTA, lanza excepción.
+    @Override
+    @Transactional(readOnly = true)
+    public CajaResponse findOpenByUsuario(String usuApertura) {
+        if (usuApertura == null || usuApertura.isBlank()) {
+            throw new IllegalArgumentException("El usuario es obligatorio.");
+        }
+
+        Caja caja = cajaRepository.findFirstByUsuAperturaAndEstadoOrderByIdCajaDesc(usuApertura.trim(), ESTADO_ABIERTA)
+                .orElseThrow(() -> new IllegalArgumentException("El usuario no tiene una caja ABIERTA."));
+
+        return mapToResponse(caja);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CajaResponse findOnlineCaja() {
+        Caja caja = cajaRepository.findByCodCaja(CAJA_ONLINE)
+                .orElseThrow(() -> new IllegalArgumentException("Caja ONLINE no encontrada."));
+
+        return mapToResponse(caja);
+    }
+
     @Override
     @Transactional(readOnly = true)
     public List<CajaResponse> findAll() {
@@ -142,8 +185,8 @@ public class CajaServiceImpl implements CajaService {
     private void validateCloseRequest(CajaCierreRequest request) {
         if (request == null) throw new IllegalArgumentException("El request no puede ser nulo.");
 
-        if (request.codCaja() == null)
-            throw new IllegalArgumentException("El idCaja es obligatorio.");
+        if (request.codCaja() == null || request.codCaja().isBlank())
+            throw new IllegalArgumentException("El código de caja es obligatorio.");
 
         if (request.usuCierre() == null || request.usuCierre().isBlank())
             throw new IllegalArgumentException("El usuario de cierre es obligatorio.");
@@ -155,7 +198,6 @@ public class CajaServiceImpl implements CajaService {
             throw new IllegalArgumentException("El monto de cierre no puede ser negativo.");
     }
 
-    // Mapea una entidad Caja a un DTO CajaResponse
     private CajaResponse mapToResponse(Caja c) {
         return new CajaResponse(
                 c.getIdCaja(),

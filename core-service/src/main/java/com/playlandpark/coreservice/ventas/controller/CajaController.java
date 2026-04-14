@@ -39,6 +39,16 @@ public class CajaController {
         return ResponseEntity.ok(cajaService.findByCode(codCaja));
     }
 
+    @GetMapping("/open-by-user/{usuApertura}")
+    public ResponseEntity<CajaResponse> findOpenByUsuario(@PathVariable String usuApertura) {
+        return ResponseEntity.ok(cajaService.findOpenByUsuario(usuApertura));
+    }
+
+    @GetMapping("/online")
+    public ResponseEntity<CajaResponse> findOnlineCaja() {
+        return ResponseEntity.ok(cajaService.findOnlineCaja());
+    }
+
     @GetMapping
     public ResponseEntity<List<CajaResponse>> findAll() {
         return ResponseEntity.ok(cajaService.findAll());

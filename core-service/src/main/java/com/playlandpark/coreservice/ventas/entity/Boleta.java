@@ -27,7 +27,7 @@ public class Boleta {
     private Caja caja;
 
     @ManyToOne
-    @JoinColumn(name = "idEmpleado", nullable = false)
+    @JoinColumn(name = "idEmpleado")
     private Empleado empleado;
 
     @Enumerated(EnumType.STRING)
@@ -58,7 +58,7 @@ public class Boleta {
 
     @Column(precision = 15, scale = 2, nullable = false)
     private BigDecimal vuelto = BigDecimal.ZERO;
-    
+
     private String estado;
 
     @Column(nullable = false)
@@ -67,4 +67,3 @@ public class Boleta {
     @OneToMany(mappedBy = "boleta", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<BoletaDetalle> detalles;
 }
-

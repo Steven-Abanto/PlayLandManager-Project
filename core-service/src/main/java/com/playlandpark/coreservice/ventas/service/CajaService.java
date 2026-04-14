@@ -8,13 +8,17 @@ import java.util.List;
 
 public interface CajaService {
 
-    CajaResponse open(CajaAperturaRequest request);      // Apertura
+    CajaResponse open(CajaAperturaRequest request);
 
-    CajaResponse close(CajaCierreRequest request);       // Cierre
+    CajaResponse close(CajaCierreRequest request);
 
     CajaResponse findById(Integer idCaja);
 
     CajaResponse findByCode(String codCaja);
+
+    CajaResponse findOpenByUsuario(String usuApertura);
+
+    CajaResponse findOnlineCaja();
 
     List<CajaResponse> findAll();
 

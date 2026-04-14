@@ -15,4 +15,8 @@ public interface CajaRepository extends JpaRepository<Caja, Integer> {
     List<Caja> findByEstado(String estado);
 
     Optional<Caja> findFirstByCodCajaAndEstadoOrderByIdCajaDesc(String codCaja, String estado);
+
+    Optional<Caja> findFirstByUsuAperturaAndEstadoOrderByIdCajaDesc(String usuApertura, String estado);
+
+    boolean existsByUsuAperturaAndEstado(String usuApertura, String estado);
 }
